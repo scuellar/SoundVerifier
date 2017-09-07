@@ -1,0 +1,97 @@
+DIGEST bbf482e6c96852c8fa1dc9786f3eccd9
+FVCC.Basics
+R15:33 compcert.lib.Coqlib <> <> lib
+R51:71 compcert.lib.Integers <> <> lib
+R91:108 Coq.MSets.MSetPositive <> <> lib
+R145:155 Coq.MSets.MSetPositive PositiveSet <> modtype
+mod 138:141 <> PSet
+R205:212 VCC.Heap <> <> lib
+def 293:297 <> ident
+R302:309 Coq.Numbers.BinNums <> positive ind
+def 431:435 <> block
+R438:445 Coq.Numbers.BinNums <> positive ind
+def 459:464 <> ptrofs
+R467:469 compcert.lib.Integers <> int syndef
+ind 484:486 <> val
+constr 499:504 <> Vundef
+constr 513:516 <> Vint
+constr 532:535 <> Vptr
+R507:509 VCC.Basics <> val ind
+R522:525 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R526:528 VCC.Basics <> val ind
+R519:521 compcert.lib.Integers <> int syndef
+R538:538 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R557:561 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R562:564 VCC.Basics <> val ind
+R547:549 Coq.Init.Datatypes <> :type_scope:x_'*'_x not
+R539:546 Coq.Numbers.BinNums <> positive ind
+R550:556 compcert.lib.Integers Int int rec
+ind 664:667 <> gval
+constr 680:684 <> GVptr
+constr 719:723 <> GVnat
+constr 740:745 <> GVbool
+constr 763:768 <> GVheap
+R687:687 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R706:711 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R712:715 VCC.Basics <> gval ind
+R696:698 Coq.Init.Datatypes <> :type_scope:x_'*'_x not
+R688:695 Coq.Numbers.BinNums <> positive ind
+R699:705 compcert.lib.Integers Int int rec
+R729:732 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R733:736 VCC.Basics <> gval ind
+R726:728 Coq.Init.Datatypes <> nat ind
+R752:755 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R756:759 VCC.Basics <> gval ind
+R748:751 Coq.Init.Datatypes <> bool ind
+R780:783 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R784:787 VCC.Basics <> gval ind
+R772:775 VCC.Heap <> heap def
+R777:779 VCC.Basics <> val ind
+ind 819:822 <> uval
+constr 828:829 <> RV
+constr 846:847 <> GV
+R835:838 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R839:842 VCC.Basics <> uval ind
+R832:834 VCC.Basics <> val ind
+R854:857 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R858:861 VCC.Basics <> uval ind
+R850:853 VCC.Basics <> gval ind
+R873:874 VCC.Basics <> RV constr
+R901:902 VCC.Basics <> GV constr
+syndef 930:933 <> heap
+R939:942 VCC.Heap <> heap def
+R944:946 VCC.Basics <> val ind
+syndef 960:967 <> val_zero
+R972:975 VCC.Basics <> Vint constr
+R977:984 compcert.lib.Integers Int zero def
+ind 1018:1021 <> type
+constr 1035:1039 <> Tvoid
+constr 1112:1115 <> Tint
+constr 1196:1203 <> Tpointer
+R1042:1045 VCC.Basics <> type ind
+R1155:1158 VCC.Basics <> type ind
+R1210:1213 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1214:1217 VCC.Basics <> type ind
+R1206:1209 VCC.Basics <> type ind
+ind 1247:1251 <> gtype
+constr 1265:1269 <> GTnat
+constr 1280:1285 <> GTbool
+constr 1296:1301 <> GTheap
+constr 1312:1320 <> GTpointer
+R1272:1276 VCC.Basics <> gtype ind
+R1288:1292 VCC.Basics <> gtype ind
+R1304:1308 VCC.Basics <> gtype ind
+R1327:1330 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1331:1335 VCC.Basics <> gtype ind
+R1323:1326 VCC.Basics <> type ind
+ind 1349:1353 <> utype
+constr 1359:1360 <> RT
+constr 1379:1380 <> GT
+R1367:1370 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1371:1375 VCC.Basics <> utype ind
+R1363:1366 VCC.Basics <> type ind
+R1388:1391 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1392:1396 VCC.Basics <> utype ind
+R1383:1387 VCC.Basics <> gtype ind
+R1408:1409 VCC.Basics <> RT constr
+R1438:1439 VCC.Basics <> GT constr

@@ -1,0 +1,454 @@
+DIGEST bbd2cbf4e0aee8a0bbd344cfbb7c0694
+FVCC.Expressions
+R15:34 Coq.Relations.Relation_Definitions <> <> lib
+R52:69 Coq.MSets.MSetPositive <> <> lib
+R106:116 Coq.MSets.MSetPositive PositiveSet <> modtype
+mod 99:102 <> PSet
+R166:184 compcert.lib.Coqlib <> <> lib
+R202:222 compcert.lib.Integers <> <> lib
+R240:256 compcert.lib.Maps <> <> lib
+R274:295 compcert.common.Memory <> <> lib
+R314:334 Coq.Classes.Morphisms <> <> lib
+R353:362 VCC.Basics <> <> lib
+R380:394 VCC.Environment <> <> lib
+R412:419 VCC.Heap <> <> lib
+R437:460 Coq.Logic.Classical_Prop <> <> lib
+syndef 473:476 <> heap
+R482:485 VCC.Heap <> heap def
+R487:489 VCC.Basics <> val ind
+ind 528:531 <> expr
+constr 547:556 <> Econst_int
+constr 594:601 <> Etempvar
+constr 637:642 <> Ederef
+R563:565 compcert.lib.Integers <> int syndef
+R567:567 VCC.Expressions <> expr ind
+R608:612 VCC.Basics <> ident def
+R614:614 VCC.Expressions <> expr ind
+R648:651 VCC.Expressions <> expr ind
+R653:653 VCC.Expressions <> expr ind
+syndef 708:716 <> expr_zero
+R721:730 VCC.Expressions <> Econst_int constr
+R732:739 compcert.lib.Integers Int zero def
+ind 754:758 <> gexpr
+constr 774:778 <> Rexpr
+constr 796:806 <> GEconst_ptr
+constr 828:838 <> GEconst_nat
+constr 855:866 <> GEconst_bool
+constr 883:891 <> GEtempvar
+constr 927:933 <> GEderef
+R785:788 VCC.Expressions <> expr ind
+R790:790 VCC.Expressions <> gexpr ind
+R815:821 VCC.Heap <> address def
+R823:823 VCC.Expressions <> gexpr ind
+R845:847 Coq.Init.Datatypes <> nat ind
+R849:849 VCC.Expressions <> gexpr ind
+R872:875 Coq.Init.Datatypes <> bool ind
+R877:877 VCC.Expressions <> gexpr ind
+R898:902 VCC.Basics <> ident def
+R904:904 VCC.Expressions <> gexpr ind
+R939:943 VCC.Expressions <> gexpr ind
+R945:945 VCC.Expressions <> gexpr ind
+R1000:1004 VCC.Expressions <> Rexpr constr
+def 1033:1046 <> free_vars_expr
+R1051:1055 VCC.Expressions <> gexpr ind
+R1059:1071 Coq.MSets.MSetPositive PositiveSet t def
+R1083:1083 VCC.Expressions <> e var
+R1094:1102 VCC.Expressions <> GEtempvar constr
+R1110:1118 Coq.MSets.MSetPositive PositiveSet singleton def
+R1127:1133 VCC.Expressions <> GEderef constr
+R1141:1154 VCC.Expressions <> free_vars_expr def
+R1168:1172 Coq.MSets.MSetPositive PositiveSet empty def
+ind 1194:1202 <> deref_loc
+constr 1257:1271 <> deref_loc_value
+R1208:1211 VCC.Expressions <> heap syndef
+R1225:1227 Coq.Init.Datatypes <> :type_scope:x_'*'_x not
+R1220:1224 VCC.Basics <> block def
+R1228:1233 VCC.Basics <> ptrofs def
+R1241:1244 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1238:1240 VCC.Basics <> val ind
+R1304:1313 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1314:1322 VCC.Expressions <> deref_loc ind
+R1330:1330 VCC.Expressions <> v var
+R1295:1297 Coq.Init.Logic <> :type_scope:x_'='_x not
+R1298:1301 Coq.Init.Datatypes <> Some constr
+R1303:1303 VCC.Expressions <> v var
+ind 1381:1390 <> eval_expr'
+constr 1437:1451 <> eval_Econst_int
+constr 1513:1525 <> eval_Etempvar
+constr 1610:1621 <> eval_Elvalue
+ind 1729:1740 <> eval_lvalue'
+constr 1800:1810 <> eval_Ederef
+R1395:1398 VCC.Environment <> renv def
+R1403:1406 VCC.Expressions <> heap syndef
+R1414:1417 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1421:1424 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1418:1420 VCC.Basics <> val ind
+R1410:1413 VCC.Expressions <> expr ind
+R1765:1768 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1769:1769 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1783:1787 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1775:1776 Coq.Init.Datatypes <> :type_scope:x_'*'_x not
+R1770:1774 VCC.Basics <> block def
+R1777:1782 VCC.Basics <> ptrofs def
+R1761:1764 VCC.Expressions <> expr ind
+R1470:1479 VCC.Expressions <> eval_expr' ind
+R1501:1504 VCC.Basics <> Vint constr
+R1506:1506 VCC.Expressions <> i var
+R1486:1495 VCC.Expressions <> Econst_int constr
+R1497:1497 VCC.Expressions <> i var
+R1565:1574 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1575:1584 VCC.Expressions <> eval_expr' ind
+R1604:1604 VCC.Expressions <> v var
+R1591:1598 VCC.Expressions <> Etempvar constr
+R1600:1601 VCC.Expressions <> id var
+R1556:1558 Coq.Init.Logic <> :type_scope:x_'='_x not
+R1547:1550 VCC.Environment <> find def
+R1554:1555 VCC.Expressions <> id var
+R1559:1562 Coq.Init.Datatypes <> Some constr
+R1564:1564 VCC.Expressions <> v var
+R1668:1677 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1695:1704 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1705:1714 VCC.Expressions <> eval_expr' ind
+R1722:1722 VCC.Expressions <> v var
+R1720:1720 VCC.Expressions <> a var
+R1678:1686 VCC.Expressions <> deref_loc ind
+R1694:1694 VCC.Expressions <> v var
+R1690:1692 VCC.Expressions <> adr var
+R1646:1657 VCC.Expressions <> eval_lvalue' ind
+R1665:1667 VCC.Expressions <> adr var
+R1663:1663 VCC.Expressions <> a var
+R1860:1869 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1870:1881 VCC.Expressions <> eval_lvalue' ind
+R1898:1900 VCC.Expressions <> adr var
+R1888:1893 VCC.Expressions <> Ederef constr
+R1895:1895 VCC.Expressions <> a var
+R1833:1842 VCC.Expressions <> eval_expr' ind
+R1851:1854 VCC.Basics <> Vptr constr
+R1856:1858 VCC.Expressions <> adr var
+R1848:1848 VCC.Expressions <> a var
+def 1915:1923 <> eval_expr
+R1931:1934 VCC.Environment <> renv def
+R1939:1942 VCC.Expressions <> heap syndef
+R1947:1956 VCC.Expressions <> eval_expr' ind
+R1962:1963 VCC.Expressions <> ex var
+R1960:1960 VCC.Expressions <> h var
+R1958:1958 VCC.Expressions <> e var
+def 1977:1987 <> eval_lvalue
+R1995:1998 VCC.Environment <> renv def
+R2003:2006 VCC.Expressions <> heap syndef
+R2011:2022 VCC.Expressions <> eval_lvalue' ind
+R2028:2029 VCC.Expressions <> ex var
+R2026:2026 VCC.Expressions <> h var
+R2024:2024 VCC.Expressions <> e var
+def 2044:2058 <> env_equiv_gexpr
+R2065:2072 Coq.Relations.Relation_Definitions <> relation def
+R2074:2077 VCC.Environment <> genv def
+R2139:2151 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R2152:2152 Coq.Init.Logic <> :type_scope:x_'='_x not
+R2162:2166 Coq.Init.Logic <> :type_scope:x_'='_x not
+R2176:2176 Coq.Init.Logic <> :type_scope:x_'='_x not
+R2153:2156 VCC.Environment <> find def
+R2161:2161 VCC.Expressions <> x var
+R2158:2159 VCC.Expressions <> e1 var
+R2167:2170 VCC.Environment <> find def
+R2175:2175 VCC.Expressions <> x var
+R2172:2173 VCC.Expressions <> e2 var
+R2110:2116 VCC.Heap PSet In def
+R2121:2134 VCC.Expressions <> free_vars_expr def
+R2136:2137 VCC.Expressions <> ex var
+R2118:2118 VCC.Expressions <> x var
+inst 2196:2220 <> Equivalenc_env_equiv_expr
+R2234:2244 Coq.Classes.RelationClasses <> Equivalence class
+R2247:2261 VCC.Expressions <> env_equiv_gexpr def
+R2263:2264 VCC.Expressions <> ex var
+prf 2408:2427 <> env_equiv_expr_equiv
+R2468:2475 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R2476:2490 VCC.Expressions <> env_equiv_gexpr def
+R2498:2499 VCC.Expressions <> e2 var
+R2495:2496 VCC.Expressions <> e1 var
+R2492:2493 VCC.Expressions <> ex var
+R2453:2461 VCC.Environment <> env_equiv def
+R2466:2467 VCC.Expressions <> e2 var
+R2463:2464 VCC.Expressions <> e1 var
+ind 2554:2564 <> eval_gexpr'
+constr 2623:2633 <> geval_Rexpr
+constr 2719:2727 <> geval_ptr
+constr 2796:2804 <> geval_nat
+constr 2874:2883 <> geval_bool
+constr 2955:2969 <> geval_GEtempvar
+constr 3056:3068 <> eval_GElvalue
+ind 3187:3199 <> eval_glvalue'
+constr 3269:3280 <> eval_GEderef
+R2569:2572 VCC.Environment <> renv def
+R2577:2580 VCC.Expressions <> heap syndef
+R2587:2590 VCC.Environment <> genv def
+R2601:2604 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R2609:2612 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R2605:2608 VCC.Basics <> uval ind
+R2596:2600 VCC.Expressions <> gexpr ind
+R3234:3237 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3238:3238 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3252:3256 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3244:3245 Coq.Init.Datatypes <> :type_scope:x_'*'_x not
+R3239:3243 VCC.Basics <> block def
+R3246:3251 VCC.Basics <> ptrofs def
+R3229:3233 VCC.Expressions <> gexpr ind
+R2671:2678 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R2679:2689 VCC.Expressions <> eval_gexpr' ind
+R2711:2712 VCC.Basics <> RV constr
+R2714:2714 VCC.Expressions <> v var
+R2700:2704 VCC.Expressions <> Rexpr constr
+R2706:2707 VCC.Expressions <> ex var
+R2653:2661 VCC.Expressions <> eval_expr def
+R2670:2670 VCC.Expressions <> v var
+R2663:2664 VCC.Expressions <> ex var
+R2744:2754 VCC.Expressions <> eval_gexpr' ind
+R2781:2782 VCC.Basics <> RV constr
+R2785:2788 VCC.Basics <> Vptr constr
+R2790:2790 VCC.Expressions <> p var
+R2765:2775 VCC.Expressions <> GEconst_ptr constr
+R2777:2777 VCC.Expressions <> p var
+R2821:2831 VCC.Expressions <> eval_gexpr' ind
+R2858:2859 VCC.Basics <> GV constr
+R2862:2866 VCC.Basics <> GVnat constr
+R2868:2868 VCC.Expressions <> n var
+R2842:2852 VCC.Expressions <> GEconst_nat constr
+R2854:2854 VCC.Expressions <> n var
+R2900:2910 VCC.Expressions <> eval_gexpr' ind
+R2938:2939 VCC.Basics <> GV constr
+R2942:2947 VCC.Basics <> GVbool constr
+R2949:2949 VCC.Expressions <> b var
+R2921:2932 VCC.Expressions <> GEconst_bool constr
+R2934:2934 VCC.Expressions <> b var
+R3009:3016 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3017:3027 VCC.Expressions <> eval_gexpr' ind
+R3052:3052 VCC.Expressions <> v var
+R3038:3046 VCC.Expressions <> GEtempvar constr
+R3048:3049 VCC.Expressions <> id var
+R3000:3002 Coq.Init.Logic <> :type_scope:x_'='_x not
+R2989:2992 VCC.Environment <> find def
+R2998:2999 VCC.Expressions <> id var
+R3003:3006 Coq.Init.Datatypes <> Some constr
+R3008:3008 VCC.Expressions <> v var
+R3118:3125 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3143:3152 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3153:3163 VCC.Expressions <> eval_gexpr' ind
+R3176:3177 VCC.Basics <> RV constr
+R3179:3179 VCC.Expressions <> v var
+R3173:3173 VCC.Expressions <> a var
+R3126:3134 VCC.Expressions <> deref_loc ind
+R3142:3142 VCC.Expressions <> v var
+R3138:3140 VCC.Expressions <> adr var
+R3091:3103 VCC.Expressions <> eval_glvalue' ind
+R3115:3117 VCC.Expressions <> adr var
+R3113:3113 VCC.Expressions <> a var
+R3340:3349 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3350:3362 VCC.Expressions <> eval_glvalue' ind
+R3385:3387 VCC.Expressions <> adr var
+R3374:3380 VCC.Expressions <> GEderef constr
+R3382:3382 VCC.Expressions <> a var
+R3303:3313 VCC.Expressions <> eval_gexpr' ind
+R3326:3327 VCC.Basics <> RV constr
+R3330:3333 VCC.Basics <> Vptr constr
+R3335:3337 VCC.Expressions <> adr var
+R3323:3323 VCC.Expressions <> a var
+def 3402:3411 <> eval_gexpr
+R3419:3422 VCC.Environment <> renv def
+R3427:3430 VCC.Expressions <> heap syndef
+R3437:3440 VCC.Environment <> genv def
+R3445:3455 VCC.Expressions <> eval_gexpr' ind
+R3465:3466 VCC.Expressions <> ex var
+R3461:3463 VCC.Expressions <> ghe var
+R3459:3459 VCC.Expressions <> h var
+R3457:3457 VCC.Expressions <> e var
+def 3480:3491 <> eval_glvalue
+R3499:3502 VCC.Environment <> renv def
+R3507:3510 VCC.Expressions <> heap syndef
+R3517:3520 VCC.Environment <> genv def
+R3525:3537 VCC.Expressions <> eval_glvalue' ind
+R3547:3548 VCC.Expressions <> ex var
+R3543:3545 VCC.Expressions <> ghe var
+R3541:3541 VCC.Expressions <> h var
+R3539:3539 VCC.Expressions <> e var
+inst 3568:3593 <> Equivalenc_env_equiv_gexpr
+R3607:3617 Coq.Classes.RelationClasses <> Equivalence class
+R3620:3634 VCC.Expressions <> env_equiv_gexpr def
+R3636:3637 VCC.Expressions <> ex var
+prf 3781:3801 <> env_equiv_gexpr_equiv
+R3842:3849 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R3850:3864 VCC.Expressions <> env_equiv_gexpr def
+R3872:3873 VCC.Expressions <> e2 var
+R3869:3870 VCC.Expressions <> e1 var
+R3866:3867 VCC.Expressions <> ex var
+R3827:3835 VCC.Environment <> env_equiv def
+R3840:3841 VCC.Expressions <> e2 var
+R3837:3838 VCC.Expressions <> e1 var
+prf 3925:3943 <> free_vars_env_equiv
+R3998:4007 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R4027:4041 VCC.Expressions <> env_equiv_gexpr def
+R4066:4066 VCC.Expressions <> e var
+R4047:4056 VCC.Environment <> update_env def
+R4062:4063 VCC.Expressions <> ov var
+R4060:4060 VCC.Expressions <> k var
+R4058:4058 VCC.Expressions <> e var
+R4043:4044 VCC.Expressions <> ex var
+R3967:3968 Coq.Init.Logic <> :type_scope:'~'_x not
+R3969:3975 VCC.Heap PSet In def
+R3980:3993 VCC.Expressions <> free_vars_expr def
+R3995:3996 VCC.Expressions <> ex var
+R3977:3977 VCC.Expressions <> k var
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4168:4170 VCC.Environment <> gso thm
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4124:4126 compcert.lib.Coqlib <> peq def
+R4168:4170 VCC.Environment <> gso thm
+R4168:4170 VCC.Environment <> gso thm
+R4168:4170 VCC.Environment <> gso thm
+R4168:4170 VCC.Environment <> gso thm
+R4168:4170 VCC.Environment <> gso thm
+R4168:4170 VCC.Environment <> gso thm
+R4519:4528 VCC.Expressions <> eval_expr' ind
+R4519:4528 VCC.Expressions <> eval_expr' ind
+R4663:4674 VCC.Expressions <> eval_lvalue' ind
+R4663:4674 VCC.Expressions <> eval_lvalue' ind
+R4826:4835 VCC.Expressions <> eval_expr' ind
+R4826:4835 VCC.Expressions <> eval_expr' ind
+R4978:4989 VCC.Expressions <> eval_lvalue' ind
+R4978:4989 VCC.Expressions <> eval_lvalue' ind
+R5046:5057 VCC.Expressions <> eval_lvalue' ind
+R5079:5089 VCC.Expressions <> eval_lvalue def
+R4884:4893 VCC.Expressions <> eval_expr' ind
+R4911:4919 VCC.Expressions <> eval_expr def
+R4724:4735 VCC.Expressions <> eval_lvalue' ind
+R4757:4767 VCC.Expressions <> eval_lvalue def
+R4573:4582 VCC.Expressions <> eval_expr' ind
+R4600:4608 VCC.Expressions <> eval_expr def
+R5258:5266 VCC.Expressions <> eval_expr def
+R5258:5266 VCC.Expressions <> eval_expr def
+R5304:5312 VCC.Expressions <> eval_expr def
+R5397:5408 VCC.Expressions <> eval_lvalue' ind
+R5397:5408 VCC.Expressions <> eval_lvalue' ind
+inst 5532:5547 <> Proper_eval_expr
+R5552:5557 Coq.Classes.Morphisms <> Proper class
+R5627:5635 VCC.Expressions <> eval_expr def
+R5569:5573 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R5561:5568 Coq.Init.Logic <> eq ind
+R5583:5587 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R5574:5582 VCC.Environment <> env_equiv def
+R5596:5601 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R5588:5595 Coq.Init.Logic <> eq ind
+R5610:5614 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R5602:5609 Coq.Init.Logic <> eq ind
+R5615:5623 Coq.Init.Logic <> iff def
+R5721:5723 VCC.Environment <> env def
+R5721:5723 VCC.Environment <> env def
+R5753:5756 VCC.Expressions <> heap syndef
+R5753:5756 VCC.Expressions <> heap syndef
+R5786:5788 VCC.Basics <> val ind
+R5786:5788 VCC.Basics <> val ind
+R6191:6201 VCC.Expressions <> eval_gexpr' ind
+R6191:6201 VCC.Expressions <> eval_gexpr' ind
+R6351:6363 VCC.Expressions <> eval_glvalue' ind
+R6351:6363 VCC.Expressions <> eval_glvalue' ind
+R6523:6533 VCC.Expressions <> eval_gexpr' ind
+R6523:6533 VCC.Expressions <> eval_gexpr' ind
+R6691:6703 VCC.Expressions <> eval_glvalue' ind
+R6691:6703 VCC.Expressions <> eval_glvalue' ind
+R6762:6774 VCC.Expressions <> eval_glvalue' ind
+R6798:6809 VCC.Expressions <> eval_glvalue def
+R6587:6597 VCC.Expressions <> eval_gexpr' ind
+R6619:6628 VCC.Expressions <> eval_gexpr def
+R6415:6427 VCC.Expressions <> eval_glvalue' ind
+R6451:6462 VCC.Expressions <> eval_glvalue def
+R6251:6261 VCC.Expressions <> eval_gexpr' ind
+R6283:6292 VCC.Expressions <> eval_gexpr def
+R6981:6990 VCC.Expressions <> eval_gexpr def
+R6981:6990 VCC.Expressions <> eval_gexpr def
+R7030:7039 VCC.Expressions <> eval_gexpr def
+R7124:7136 VCC.Expressions <> eval_glvalue' ind
+R7124:7136 VCC.Expressions <> eval_glvalue' ind
+inst 7263:7284 <> Proper_eval_expr_gexpr
+R7300:7305 Coq.Classes.Morphisms <> Proper class
+R7385:7394 VCC.Expressions <> eval_gexpr def
+R7396:7397 VCC.Expressions <> ex var
+R7318:7323 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7309:7317 VCC.Environment <> env_equiv def
+R7332:7336 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7324:7331 Coq.Init.Logic <> eq ind
+R7355:7359 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7337:7351 VCC.Expressions <> env_equiv_gexpr def
+R7353:7354 VCC.Expressions <> ex var
+R7368:7372 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7360:7367 Coq.Init.Logic <> eq ind
+R7373:7381 Coq.Init.Logic <> iff def
+R7501:7503 VCC.Environment <> env def
+R7501:7503 VCC.Environment <> env def
+R7547:7550 VCC.Expressions <> heap syndef
+R7547:7550 VCC.Expressions <> heap syndef
+R7584:7587 VCC.Basics <> uval ind
+R7584:7587 VCC.Basics <> uval ind
+R7741:7749 VCC.Environment <> env_equiv def
+R7741:7749 VCC.Environment <> env_equiv def
+R7903:7921 VCC.Heap PSet singleton_spec thm
+R7903:7921 VCC.Heap PSet singleton_spec thm
+R7903:7921 VCC.Heap PSet singleton_spec thm
+inst 7955:7971 <> Proper_eval_gexpr
+R7976:7981 Coq.Classes.Morphisms <> Proper class
+R8065:8074 VCC.Expressions <> eval_gexpr def
+R7993:7997 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7985:7992 Coq.Init.Logic <> eq ind
+R8007:8012 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R7998:8006 VCC.Environment <> env_equiv def
+R8021:8025 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8013:8020 Coq.Init.Logic <> eq ind
+R8035:8039 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8026:8034 VCC.Environment <> env_equiv def
+R8048:8052 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8040:8047 Coq.Init.Logic <> eq ind
+R8053:8061 Coq.Init.Logic <> iff def
+R8141:8162 VCC.Expressions <> Proper_eval_expr_gexpr inst
+R8141:8162 VCC.Expressions <> Proper_eval_expr_gexpr inst
+R8179:8198 VCC.Expressions <> env_equiv_expr_equiv thm
+R8179:8198 VCC.Expressions <> env_equiv_expr_equiv thm
+inst 8229:8252 <> Proper_eval_expr_glvalue
+R8268:8273 Coq.Classes.Morphisms <> Proper class
+R8353:8364 VCC.Expressions <> eval_glvalue def
+R8366:8367 VCC.Expressions <> ex var
+R8286:8291 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8277:8285 VCC.Environment <> env_equiv def
+R8300:8304 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8292:8299 Coq.Init.Logic <> eq ind
+R8323:8327 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8305:8319 VCC.Expressions <> env_equiv_gexpr def
+R8321:8322 VCC.Expressions <> ex var
+R8336:8340 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8328:8335 Coq.Init.Logic <> eq ind
+R8341:8349 Coq.Init.Logic <> iff def
+R8471:8473 VCC.Environment <> env def
+R8471:8473 VCC.Environment <> env def
+R8517:8520 VCC.Expressions <> heap syndef
+R8517:8520 VCC.Expressions <> heap syndef
+R8554:8557 VCC.Basics <> uval ind
+R8554:8557 VCC.Basics <> uval ind
+inst 8765:8783 <> Proper_eval_glvalue
+R8788:8793 Coq.Classes.Morphisms <> Proper class
+R8877:8888 VCC.Expressions <> eval_glvalue def
+R8805:8809 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8797:8804 Coq.Init.Logic <> eq ind
+R8819:8824 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8810:8818 VCC.Environment <> env_equiv def
+R8833:8837 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8825:8832 Coq.Init.Logic <> eq ind
+R8847:8851 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8838:8846 VCC.Environment <> env_equiv def
+R8860:8864 Coq.Classes.Morphisms ProperNotations :signature_scope:x_'==>'_x not
+R8852:8859 Coq.Init.Logic <> eq ind
+R8865:8873 Coq.Init.Logic <> iff def
+R8955:8978 VCC.Expressions <> Proper_eval_expr_glvalue inst
+R8955:8978 VCC.Expressions <> Proper_eval_expr_glvalue inst
+R8995:9014 VCC.Expressions <> env_equiv_expr_equiv thm
+R8995:9014 VCC.Expressions <> env_equiv_expr_equiv thm

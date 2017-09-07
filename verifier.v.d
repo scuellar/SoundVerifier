@@ -1,0 +1,2 @@
+verifier.vo verifier.glob verifier.v.beautified: verifier.v ../CompCert-3.0.1/lib/Coqlib.vo ../CompCert-3.0.1/lib/Integers.vo ./Basics.vo ./Expressions.vo ./Environment.vo ./Heap.vo ./Semantics.vo ./AssertionSemantics.vo
+verifier.vio: verifier.v ../CompCert-3.0.1/lib/Coqlib.vio ../CompCert-3.0.1/lib/Integers.vio ./Basics.vio ./Expressions.vio ./Environment.vio ./Heap.vio ./Semantics.vio ./AssertionSemantics.vio

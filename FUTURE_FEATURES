@@ -1,0 +1,21 @@
+Current features:
+
+* Data types: Tint, Tvoid
+* Loops: While, For, Do, Break, Continue
+* Conditional statements
+* Tempvars: local environment and set instruction
+* Pure comands: Assert and assume
+* Assertion languag: Strongest post
+
+Features to be added:
+
+* Data types: Tlong, Tfloat, Tpointer, Tarray, Tfunction, Tstruct, Tunion, Tnil, Tcons.
+* Heap
+* Operators
+* Functions
+* Ghost variables
+* Ghost code
+* Goto
+* Boolean tests beyond integers.
+* Block contracts
+

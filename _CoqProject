@@ -1,0 +1,2 @@
+-Q ../CompCert-3.0.1/ compcert
+-R . VCC
