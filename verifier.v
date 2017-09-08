@@ -24,6 +24,75 @@ Proof.
   intros ? ? ? H ?. apply H; auto.
 Qed.
 
+(** * Some tactics (worth moving some) *)
+
+(* Normal form hypothesis*)
+    Ltac normal_form_not_or:=
+      repeat match goal with
+             | [ H: ~ ( _ \/ _ ) |- _ ] =>
+               apply Classical_Prop.not_or_and in H; destruct H
+             end.
+    
+    (* Simplify hypothesis of the form context[In x s] *)
+    Ltac simpl_set HH:=
+      repeat first
+             [rewrite union_spec in HH |
+              rewrite singleton_spec in HH];
+      normal_form_not_or.
+    (* Simplify goal of the form [~ In x s] *)
+    Ltac reduce_in_set:=
+        repeat first[
+                 rewrite union_spec;
+                 try (eapply Classical_Prop.and_not_or; split)|
+                 rewrite singleton_spec
+               ].
+
+    (* Solves goals of the form [fresh_var ?st <> _ ] *)
+    Ltac solve_fresh_var_neq':=
+    match goal with
+    | [ |- fresh_var ?st <> _ ] =>
+      let HH := fresh "HH" in
+      pose proof (fresh_var_spec st) as HH;
+        simpl_set HH; assumption
+    end.
+    
+    
+    Ltac solve_fresh_var_neq:=
+      first
+        [solve_fresh_var_neq' | symmetry; solve_fresh_var_neq'].
+
+
+    (* simplifies goal and hypothesis of the form [find _ _ = Some] *)
+    Ltac simpl_find :=
+      repeat match goal with
+             | [ H: find ?e ?x = Some _, H': find ?e ?x = Some _  |- _ ] =>
+               rewrite H in H'; invert H'
+             | [  |- find _ _ = _ ] =>
+               first [ rewrite gss | rewrite gso by solve_fresh_var_neq]
+             | [ H: find _ _ = Some _  |- _ ] =>
+               first [ rewrite gss in H | rewrite gso in H by solve_fresh_var_neq]
+             end.
+
+    (* solves goals of the forma [~ In (fresh_var s1) s2] when s2 < s2*)
+    Ltac fresh_var_subset:=
+      match goal with
+      | [ |- ~ PSet.In (fresh_var ?st) _ ] =>
+        let HH := fresh "HH" in
+        pose proof (fresh_var_spec st) as HH;
+        simpl_set HH;
+        reduce_in_set; assumption
+      end.
+
+    (* solves goals of the form [~ In x s] *)
+    Ltac solve_in_set:=
+      solve [
+          simpl;
+          reduce_in_set;
+          first[ apply empty_spec
+               | solve[rewrite singleton_spec; solve_fresh_var_neq]
+               | solve[apply fresh_var_spec]
+               | fresh_var_subset]
+        ].
 
 (** * Sintactic evaluator*)
 (* Evaluates a continuation and outputs the obligations necessary to verify the program*)
@@ -242,68 +311,9 @@ Proof. tauto. Qed.
 
 (*Some tactics first*)
 
-    (* Normal form hypothesis*)
-    Ltac normal_form_not_or:=
-      repeat match goal with
-             | [ H: ~ ( _ \/ _ ) |- _ ] =>
-               apply Classical_Prop.not_or_and in H; destruct H
-             end.
     
-    (* Simplify hypothesis of the form context[In x s] *)
-    Ltac simpl_set HH:=
-      repeat first
-             [rewrite union_spec in HH |
-              rewrite singleton_spec in HH];
-      normal_form_not_or.
-    (* Simplify goal of the form [~ In x s] *)
-    Ltac reduce_in_set:=
-        repeat first[
-                 rewrite union_spec;
-                 try (eapply Classical_Prop.and_not_or; split)|
-                 rewrite singleton_spec
-               ].
 
-    (* Solves goals of the form [fresh_var ?st <> _ ] *)
-    Ltac solve_fresh_var_neq':=
-    match goal with
-    | [ |- fresh_var ?st <> _ ] =>
-      let HH := fresh "HH" in
-      pose proof (fresh_var_spec st) as HH;
-        simpl_set HH; assumption
-    end.
-    Ltac solve_fresh_var_neq:=
-      first
-        [solve_fresh_var_neq' | symmetry; solve_fresh_var_neq'].
-
-    (* solves goals of the forma [~ In (fresh_var s1) s2] when s2 < s2*)
-    Ltac fresh_var_subset:=
-      match goal with
-      | [ |- ~ PSet.In (fresh_var ?st) _ ] =>
-        let HH := fresh "HH" in
-        pose proof (fresh_var_spec st) as HH;
-        simpl_set HH;
-        reduce_in_set; assumption
-      end.
-
-    (* solves goals of the form [~ In x s] *)
-    Ltac solve_in_set:=
-      solve [
-          simpl;
-          reduce_in_set;
-          first[ apply empty_spec
-               | solve[rewrite singleton_spec; solve_fresh_var_neq]
-               | solve[apply fresh_var_spec]
-               | fresh_var_subset]
-        ].
-
-    (* simplifies goal and hypothesis of the form [find _ _ = Some] *)
-    Ltac simpl_find :=
-      repeat match goal with
-             | [  |- find _ _ = _ ] =>
-               first [ rewrite gss | rewrite gso by solve_fresh_var_neq]
-             | [ H: find _ _ = Some _  |- _ ] =>
-               first [ rewrite gss in H | rewrite gso in H by solve_fresh_var_neq]
-             end.
+    
 
     (* Simplify the ghost environment in expressions   *)
     Ltac normal_form_eval_gexpr_goal:=
@@ -331,6 +341,31 @@ Proof. tauto. Qed.
                progress rewrite free_vars_env_equiv_assert in H by solve_in_set
              end.
 
+    Ltac solve_assertion_subgoal:=
+      first [ assumption |
+              solve[ simpl_env_gexpr; trivial] |
+              solve [simpl_find; trivial] |
+              solve [simpl_env_assertion; entailer] ].
+    Ltac solve_assertion:=
+      first [ solve_assertion_subgoal |
+              try destruct_eval_gexpr;
+              econstructor; solve_assertion_subgoal].
+    
+Lemma eval_statement_ghost_weakening:
+  forall P Q, Q ||= P ->
+         forall s, strongest_post_ghost Q s ||= strongest_post_ghost P s.
+  Proof.
+  intros.
+  revert P Q H.
+  induction s; intros; auto; try entailer.
+  - intros ? ? ?.
+    simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
+      intros ?; solve_assertion.
+  - intros ? ? ?.
+    simpl. eapply IHs2, IHs1; assumption.
+  Qed.
+    
+      
 Lemma eval_statement_weakening:
   forall P Q, Q ||= P ->
     forall s, strongest_post Q s ||= strongest_post P s.
@@ -339,71 +374,48 @@ Proof.
   revert P Q H.
   induction s; intros; auto; try entailer.
   - (* Set  *)
-    simpl.
-    destruct (fresh_vars_spec_util Q i e) as [? []].
-    destruct (fresh_vars_spec_util P i e) as [? []].
-    remember (fresh_var (union (free_vars Q) (singleton i))) as temp.
-    remember (fresh_var (union (free_vars P) (singleton i))) as temp'.
-    intros e0 h0 ghe0.
-
-    Ltac destruct_ex:=
-      match goal with
-      | [ H: exists _, _  |- _ ] =>
-        let  x:= fresh "x" in
-        destruct H as [x ?]
-      end.
-    simpl; intros.
-    repeat (try destruct_ex; try destruct_and).
-    destruct_eval_gexpr.
-    rewrite H2 in H1; invert H1.
-      
-    repeat (try eexists; try split).
-    + do 2 econstructor.
-      destruct_eval_expr; eassumption.
-    + econstructor. rewrite gss ; reflexivity.
-    + econstructor. rewrite gss ; reflexivity.
-    + econstructor; eauto.
-    + rewrite free_vars_update; eauto.
-      eapply H.
-      rewrite free_vars_update in H11; eauto. 
-      subst; eauto.
-      subst; eauto.
-
-  - (* Assign *)
-    rename e into ex1. intros ? ? ?.
+    intros ? ? ?.
     simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
-      intros ?; first [ assumption |
-                        solve[ simpl_env_gexpr; trivial] |
-                        solve [simpl_find; trivial] |
-                        solve [simpl_env_assertion; entailer] |
-                        idtac ].
-
-    + simpl_env_gexpr; trivial.
-      destruct_eval_gexpr.
-      econstructor; rewrite gss; rewrite gss in H1; auto.
-
-    + destruct_eval_gexpr.
-      econstructor; rewrite gss; rewrite gss in H1; auto.
-
+      intros ?; solve_assertion.
+    
+  - (* Assign *)
+    intros ? ? ?.
+    simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
+      intros ?; solve_assertion.
       
   - (*Sseq *)
-    eapply IHs2; eauto.
+    eapply IHs2, IHs1; eassumption.
 
   - (* ghost*)
-    simpl.
-    admit.
+    apply eval_statement_ghost_weakening; assumption.
 
   - (* ifthenelse *)
-      simpl; intros.
+    simpl; intros.
       specialize (IHs1 (bool_true e /\ P) (bool_true e /\ Q))%assert.
       specialize (IHs2 (bool_false e /\ P) (bool_false e /\ Q))%assert.
       assert (forall K:assertion, (K /\ Q) ||= (K /\ P))%assert by (intros K; entailer).
       specialize (IHs1 (H0 _)).
       specialize (IHs2 (H0 _)).
       entailer.
-
 Qed.
-    
+
+Lemma list_entailment_gstatement_weakening:
+  forall P Q,
+    Q ||= P ->
+    forall stm,
+      list_entailment (gstatement_obligations P stm) ->
+      list_entailment (gstatement_obligations Q stm).
+Proof.
+  intros P Q HH stm; revert P Q HH.
+  induction stm; auto; simpl;
+    try (intros; destruct_and; split; entailer).
+
+  simpl; intros P Q HH.
+    repeat rewrite list_entailment_app.
+    apply forall_and_if; [apply IHstm1 | apply IHstm2]; auto.
+    apply eval_statement_ghost_weakening; auto.
+Qed.
+  
 Lemma list_entailment_statement_weakening:
   forall P Q,
     Q ||= P ->
@@ -414,11 +426,14 @@ Proof.
   intros P Q HH k; revert P Q HH.
   induction k; auto;
     try (simpl; intros; split; entailer).
-  - simpl; intros P Q HH I;
-      specialize (IHk1 P Q HH I);
-      specialize (IHk2 (strongest_post P k1) (strongest_post Q k1) (eval_statement_weakening _ _  HH _) I);
-      do 2 rewrite list_entailment_app.
-    tauto.
+  - simpl; intros P Q HH I.
+    repeat rewrite list_entailment_app.
+    apply forall_and_if; [apply IHk1 | apply IHk2]; auto.
+    apply eval_statement_weakening; auto.
+
+  - intros; eapply list_entailment_gstatement_weakening;
+    eassumption.
+    
   - simpl; intros; split; try entailer.
     destruct_and.
     destruct_list_entailment.
@@ -490,31 +505,14 @@ Proof.
         eapply IH; eauto.
       * inversion H1; subst.
         eapply HH; auto.
+    +  subst.
+       assert (HH:=IHKK).
+       apply IH in IHKK.
+       intros.
+       inversion H; subst.
+       * inversion H0; subst.
+       * inversion H1; subst.      
 Qed.
-
-(*
-Lemma next_cont_lt:
-      forall s k,
-        cont_lt (next_cont s k) (Kseq s k).
-    Proof.
-    Admitted.
-    (*
-      intros.
-      destruct s; simpl;
-        try (do 2 constructor).
-      eapply continuation_strong_ind; intros.
-      - 
-      - induction k;  try (simpl; do 2 constructor).
-        + inversion IHk; subst.
-          inversion H. subst s0 k0; simpl.
-          do 2 rewrite H3.
-          rewrite H3 in *.
-      econstructor 2. eauto. econstructor.
-      
-        
-    apply eval_statement_weakening; auto.
-  tauto.*)
-*)
     
 Lemma list_entailment_weakening:
   forall P Q,
@@ -532,28 +530,13 @@ Proof.
     eapply list_entailment_statement_weakening; eauto.
     eapply eval_statement_weakening with (s:=s) in HH.
     eapply IHk; eauto.
-    (*
-  - simpl; intros ? ? ?.
-    repeat rewrite list_entailment_app.
-    intros []; split.
-    + eapply list_entailment_statement_weakening; eauto.
-    + eapply IHk; eauto.
-      eapply eval_statement_weakening; auto. *)
-    
-  (*
-    (*iff using next_cont *) 
-  induction k using continuation_strong_ind; auto; try solve[intros; entailer].
-
-  destruct k; try solve[intros; entailer].
-  simpl; intros P Q HH.
-| _ => do 2 rewrite list_entailment_app.
-  intros []; split; auto.
-  - eapply list_entailment_statement_weakening; eauto.
-  - eapply H; eauto.
-    
-    eapply next_cont_lt.
-    simpl in *.
-    eapply eval_statement_weakening; auto.*)
+  - simpl; intros ? ? ?;
+           repeat rewrite list_entailment_app; intros.
+    destruct_and.
+    split; try entailer.
+    eapply list_entailment_gstatement_weakening; eauto.
+    eapply eval_statement_ghost_weakening in HH.
+    eapply IHk; eauto.
 Qed.
 
 End Evaluator.
@@ -580,52 +563,65 @@ Proof.
 Qed.*)
 
 Lemma deref_loc_functional:
-            forall (ex : expr) (ty : type) (h : heap) (adr : block * ptrofs) (v : val),
-              deref_loc (typeof (Ederef ex ty)) h adr v ->
-              forall v' : val, deref_loc (typeof (Ederef ex ty)) h adr v' -> v = v'.
-          Proof.
-            intros ex ty h adr v H0 v' H3.
-            inversion H0; inversion H3.
-            subst.
-            rewrite H in H2; inversion H2.
-            auto.
-          Qed.
-          
-Lemma eval_expr_functional:
-        forall ex e h v v',
-          eval_expr ex e h v ->
-          eval_expr ex e h v' ->
-          v = v'.
-      Proof.
-        induction ex; intros;
-          destruct_eval_expr; auto.
-        - rewrite H3 in H0; inversion H0; auto.
-        - assert (HH: (Vptr adr) = (Vptr adr0)) by
-          (eapply IHex; eauto).
-          inversion HH; subst.
-          erewrite deref_loc_functional; eauto.
-      Qed.
+  forall (adr0 : block * ptrofs) (h : heap) (v v' : val),
+    deref_loc h adr0 v ->
+    deref_loc h adr0 v' -> v = v'.
+Proof.
+  intros adr0 h v v' H0 H3.
+  invert H0; invert H3. rewrite H1 in H; invert H. auto.
+Qed.
 
-Lemma eval_expr_bool_spec:
-  forall ex e h v ty b,
+Lemma eval_expr_functional:
+  forall ex e h v v',
     eval_expr ex e h v ->
+    eval_expr ex e h v' ->
+    v = v'.
+Proof.
+  induction ex; intros;
+    destruct_eval_expr; auto; simpl_find; auto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by
+        (eapply IHex; eauto).
+    invert HH.
+    erewrite deref_loc_functional; eauto.
+Qed.
+
+Lemma eval_gexpr_functional:
+  forall ex e h ghe v v',
+    eval_gexpr ex e h ghe v ->
+    eval_gexpr ex e h ghe v' ->
+    v = v'.
+Proof.
+  induction ex; intros;
+    destruct_eval_gexpr; auto; simpl_find; auto.
+  - f_equal; eapply eval_expr_functional; try eassumption.
+  - assert (HH: (RV (Vptr adr)) = (Vptr adr0)) by (eapply IHex; eauto).
+    invert HH. 
+    f_equal; eapply deref_loc_functional; eauto.
+Qed.
+
+(*
+Lemma eval_expr_bool_spec:
+  forall (ex:expr) e h ghe (v:val) ty b,
+    eval_gexpr ex e h ghe v ->
     bool_val v ty = Some b ->
-    if b then [e,h]|= (bool_true ex) else [e,h]|= (bool_false ex).
+    if b then [e, h, ghe]|= (bool_true ex) else [e, h, ghe]|= (bool_false ex).
 Proof.
   intros; simpl in *.
   destruct v; destruct ty; inversion H0.
   destruct (Int.eq i Int.zero) eqn:Niz; simpl.
   - apply int_eq_iff in Niz; subst.
     eexists.
-    split; eauto.
+    split; econstructor; eauto.
     econstructor.
+    invert H; eauto.
+    invert H; auto.
   - intros [v []].
-    pose proof (eval_expr_functional _ _ _ _ _ H H3); subst.
+    pose proof (eval_gexpr_functional _ _ _ _ _ _ H1); subst.
     clear H H3.
     destruct_eval_expr.
     apply int_neq_iff in Niz;
         apply Niz; reflexivity.
-Qed.
+Qed.*)
 
 (*
 Lemma wekalest_pre_safe_st:
@@ -672,14 +668,18 @@ Proof.
 Qed.*)
 
 
-
 Definition invariant (st:state):=
   match st with
-  | State stm k e h =>
+  | State stm k e h ghe =>
     exists phi,
-    eval_assert phi e h /\
+    eval_assert phi e h ghe /\
     list_entailment (statement_obligations phi stm (get_loop_invariants k))  /\
     list_entailment (continuation_obligations (strongest_post phi stm) k)
+  | GState stm k e h ghe => 
+    exists phi,
+    eval_assert phi e h ghe /\
+    list_entailment (gstatement_obligations phi stm)  /\
+    list_entailment (continuation_obligations (strongest_post_ghost phi stm) k)
   end.
 
 (*Tactic for preservation of invariant *)
@@ -705,11 +705,11 @@ Ltac easy_invariant I:=
 
 (** *Preservation *)
 (*Begin with the hardest cases*)
-(* 1) Ifthenelse*)
+(* 1) sequence *)
 Lemma seq_preservation:
-  forall e h k s1 s2,
-    invariant (State (Sseq s1 s2) k e h) ->
-    invariant (State s1 (Kseq s2 k) e h).
+  forall e h ghe k s1 s2,
+    invariant (State (Sseq s1 s2) k e h ghe) ->
+    invariant (State s1 (Kseq s2 k) e h ghe).
 Proof.
   intros.
   trivial_invariant.
@@ -717,43 +717,53 @@ Qed.
 
 (* 2) Set *)
 
-  
+(*
 Lemma expr_equiv_tempvar:
   forall (x : ident) (ty : type) (v : option val) (temp : positive),
-    temp <> x -> forall e : env, env_equiv_expr (Etempvar x ty) (update_env e temp v) e.
+    temp <> x -> forall e : env, env_equiv_gexpr (Etempvar x) (update_env e temp v) e.
 Proof.
   intros ? ? ? ? ? ? ?; cbv [free_vars_expr].
   rewrite PSet.singleton_spec; intros ?; subst x.
   rewrite gso; auto.
 Qed.
+ *)
+
+
 Ltac expr_entailer:=
   match goal with
   | _ => assumption
-  | [ |- eval_expr (Etempvar ?x _) (update_env _ ?x' ?v) _ ?v' ] =>
+  | [ |- eval_expr (Etempvar ?x) (update_env _ ?x' ?v) _ ?v' ] =>
     match x with
       x' =>
       (*should I check v' = Some v ?*)
       solve [econstructor; rewrite gss; auto]
     end
-   | [ |- eval_expr (Etempvar ?x' _) (update_env _ ?temp' _) _ _ ] =>
-    rewrite expr_equiv_tempvar by (first [assumption|symmetry; assumption]) 
-   | [  |- eval_expr ?ex ?e _ _ ] =>
-     match goal with
-     | [ H: ~ PSet.In ?temp (free_vars_expr ex) |- _ ] =>
-       match e with
-         context [update_env _ temp _] =>
-         repeat (
-             first[
-                 rewrite (update_comm _ temp) by (first [assumption|symmetry; assumption])|
-                 rewrite <- (update_comm _ _ temp) by  (first [assumption|symmetry; assumption])
-               ]
-           );
-         rewrite free_vars_env_equiv by exact H
-       end
-     end
+  | [ |- eval_expr (Etempvar ?x') (update_env _ ?temp' _) _ _ ] =>
+    fail (* rewrite expr_equiv_tempvar by (first [assumption|symmetry; assumption])  *)
+  | [  |- eval_expr ?ex ?e _ _ ] =>
+    match goal with
+    | [ H: ~ PSet.In ?temp (free_vars_expr ex) |- _ ] =>
+      match e with
+        context [update_env _ temp _] =>
+        repeat (
+            first[
+                rewrite (update_comm _ temp) by (first [assumption|symmetry; assumption])|
+                rewrite <- (update_comm _ _ temp) by  (first [assumption|symmetry; assumption])
+              ]
+          );
+        rewrite free_vars_env_equiv by exact H
+      end
+    end
   | _ => rewrite redundant_update
   | _ => rewrite pointless_update by reflexivity
   end.
+
+Ltac gexpr_entailer:=
+  first [
+      solve [econstructor; repeat expr_entailer] |
+      solve   [econstructor; simpl_find; auto] |
+      idtac  ].
+
 Ltac solve_assert:=
         match goal with
         | _ => assumption
@@ -779,12 +789,13 @@ Ltac solve_assert:=
         | _ => rewrite pointless_update by reflexivity 
         end.
 
+
 Lemma set_preservation:
-  forall e h x ty ex k v,
-    invariant (State (Sset x ty ex) k e h) ->
+  forall e h ghe x ex k v,
+    invariant (State (Sset x ex) k e h ghe) ->
     (* get_type e x = Some ty \/ get_type e x = None -> *)
     eval_expr ex e h v ->
-    invariant (State Sskip k (update_env e x (Some v)) h).
+    invariant (State Sskip k (update_env e x (Some v)) h ghe).
 Proof.
   intros ? ? ? ? ? ? ? H1 H2.
   destruct_inv.
@@ -792,47 +803,20 @@ Proof.
     destruct HH as [Fresh1 [Fresh2 Fresh3]].
   remember (fresh_var (union (free_vars phi) (union (free_vars_expr ex) (singleton x))))
     as temp.
-  exists (strongest_post phi (Sset x ty ex)).
+  exists (strongest_post phi (Sset x ex)).
   (*This should be reformulated and maybe turn into lemma*)
   split; [|split].
-  - cbv delta[strongest_post] beta iota zeta.
-    rewrite <- Heqtemp.
-    repeat solve_assert.
-    + apply H in phi_OK; destruct phi_OK.
-      unfold eval_assert in H1; simpl in H1.
+  - repeat (first [eexists | split]); 
+      gexpr_entailer.
 
-      clear - H1 H2.
-      revert e h ty v H1 H2.
-      induction ex; intros.
-      * destruct_eval_expr.
-        inversion H1; subst.
-        constructor.
-      * destruct_eval_expr.
-        destruct H1 as (?&?&?&?); subst; simpl; auto.
-        rewrite H3 in H; inversion H; auto.
-      * destruct_eval_expr.
-        simpl in H1.
-        destruct H1 as (? & ? &? &?); subst.
-        
-        simpl in H2.
-        eapply IHex; eauto.
-        inversion H0; subst.
-        
-        destruct H1 as (?&?&?&?); subst; simpl; auto.
-        rewrite H3 in H; inversion H; auto.
 
-        inversion H1; subst.
-        simpl in H2.
-        destruct H2 as (? & ? &? &?); subst.
-      
+    solve_assert.
+    rewrite pointless_update by reflexivity.
+    erewrite free_vars_update; try assumption.
+    solve_in_set.
 
-      
-      
-      destruct H1; inversion H1; subst; constructor.
-    eexists; split. [ eassumption |].
   - simpl; tauto.
-  - simpl in *. 
-    rewrite <- Heqtemp; assumption.
+  - simpl in *. assumption.
 Qed.
 
 (* 3) Ifthenelse*)
