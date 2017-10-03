@@ -51,7 +51,7 @@ Qed.
 
 Definition upd_heap (h:heap) (add:address) (v:val) : heap:=
   fun add' =>  if add_eq add add' then Some v else h add'.
-  
+
 Definition update_heap (h:heap) (add:address) (value:option val) : heap:=
   match value with
     | None => remove_heap h add
@@ -94,6 +94,16 @@ Proof.
   unfold add_eq.
   rewrite andb_true_iff,Pos.eqb_eq, int_eq_iff.
   split; intros H; inversion H; subst; auto.
+Qed.
+
+Lemma upd_heap_gss:
+  forall (h : heap) (v : val) (addr : address),
+    upd_heap h addr v addr <> None.
+Proof. intros.
+       unfold upd_heap; simpl.
+       assert (HH:addr = addr) by reflexivity.
+       apply (add_deq_true) in HH.
+       rewrite HH. intros; discriminate.
 Qed.
 
 Lemma add_deq_false: forall a1 a2,
@@ -141,7 +151,6 @@ Ltac destruct_add_dec:=
       rewrite H0; clear H0
     end
   end.
-
 
 Lemma heap_gro:
   forall id h id',

@@ -104,12 +104,15 @@ endif
 #                    #
 ######################
 
-VFILES:=AssertionSemantics.v\
+VFILES:=Tactics.v\
+  Freshvars.v\
+  AssertionSemantics.v\
   Basics.v\
   Heap.v\
   Expressions.v\
   Environment.v\
   Semantics.v\
+  ExpressionVerifier.v\
   verifier.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)

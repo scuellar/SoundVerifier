@@ -15,6 +15,7 @@ Require Import FSets.FMapFacts.
 Module PMapsFacts:=  (WFacts_fun OrderedTypeEx.PositiveOrderedTypeBits PMap).
 Import PMapsFacts.
 
+Require Import VCC.Tactics.
 Require Import VCC.Basics.
 
 (** * 8) Environment *)
@@ -23,6 +24,7 @@ Section ParametricInVal.
 Definition env:Type := PMap.t val.
 Definition find  (e:env) (k:ident) := PMap.find k e.
 Definition env_fun_equiv: relation (positive -> option val) := pointwise_relation _ Logic.eq.
+
 Global Instance Equivalence_env_fun_equiv: Equivalence env_fun_equiv:= _.
 Definition env_equiv: relation env := (fun x y => env_fun_equiv (find x) (find y)).
 Global Instance Equivalence_env_equiv: Equivalence env_equiv.
@@ -147,3 +149,11 @@ Definition find_error (e:renv) (k:ident) : val:=
   | Some v => v
   | None => Vundef
   end.
+
+Ltac subst_find :=
+  repeat
+    match goal with
+    | [ H: find ?e ?x = Some _, H': find ?e ?x = Some _  |- _ ] =>
+      rewrite H in H'; invert H'
+    end.
+                              

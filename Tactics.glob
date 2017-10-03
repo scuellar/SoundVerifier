@@ -1,0 +1,28 @@
+DIGEST 9632be3e2e7c90ab56f024f4c41b2a6c
+FVCC.Tactics
+R16:39 Coq.Logic.Classical_Prop <> <> lib
+R57:83 Coq.Classes.RelationClasses <> <> lib
+R101:134 Coq.Relations.Relation_Definitions <> <> lib
+def 174:180 <> neq_rel
+R192:199 Coq.Relations.Relation_Definitions <> relation def
+R201:201 VCC.Tactics <> A var
+R216:216 VCC.Tactics <> A var
+R223:226 Coq.Init.Logic <> :type_scope:x_'<>'_x not
+R222:222 VCC.Tactics <> x var
+R227:227 VCC.Tactics <> y var
+inst 246:258 <> Symmetric_neq
+R272:280 Coq.Classes.RelationClasses <> Symmetric class
+R285:291 VCC.Tactics <> neq_rel def
+R293:293 VCC.Tactics <> A var
+R282:282 VCC.Tactics <> A var
+R528:531 Coq.Init.Logic <> :type_scope:'~'_x not
+R538:539 Coq.Init.Logic <> :type_scope:'~'_x not
+R533:536 Coq.Init.Logic <> :type_scope:x_'\/'_x not
+R528:531 Coq.Init.Logic <> :type_scope:'~'_x not
+R538:539 Coq.Init.Logic <> :type_scope:'~'_x not
+R533:536 Coq.Init.Logic <> :type_scope:x_'\/'_x not
+R568:592 Coq.Logic.Classical_Prop <> not_or_and thm
+R687:690 Coq.Init.Logic <> :type_scope:x_'/\'_x not
+R687:690 Coq.Init.Logic <> :type_scope:x_'/\'_x not
+R789:792 Coq.Init.Logic <> :type_scope:x_'/\'_x not
+R789:792 Coq.Init.Logic <> :type_scope:x_'/\'_x not

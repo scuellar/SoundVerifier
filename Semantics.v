@@ -5,6 +5,7 @@ Require Import MSets.MSetPositive.
 Import PositiveSet. Module PSet:= PositiveSet. (*For positive-indexed sets*) 
 Require Import Coq.Classes.Morphisms.
 
+Require Import VCC.Tactics.
 Require Import VCC.Basics.
 Require Import VCC.Environment.
 Require Import VCC.Heap.
@@ -77,6 +78,26 @@ Definition bool_val (v:val)(ty:type): option bool:=
     Some  (negb (Int.eq n Int.zero)) 
   | _, _ => None
   end.
+Lemma tint_is_bool:
+  forall (e0 : expr) (e : renv) (h : heap) x,
+    expr_type e0 e h Tint ->
+    eval_expr e0 e h x ->
+    exists b, bool_val x Tint = Some b.
+Proof.
+  intros.
+  induction e0.
+  + destruct_eval_expr.
+    simpl. eexists; reflexivity.
+  + destruct H as (?&?&?).
+    destruct_eval_expr; simpl_find.
+    destruct x0; invert H2.
+    eexists; reflexivity.
+  + simpl in H.
+    clear IHe0; invert H0.
+    pose proof (expr_type_eval_pointers _ _ _ _ _ H0 H2).
+    destruct x; invert H3.
+    eexists; reflexivity.
+Qed.
 
 Inductive step: state -> state-> Prop:=
 | step_skip: forall e ghe h s c,
@@ -94,6 +115,12 @@ Inductive step: state -> state-> Prop:=
     eval_expr ex e h v ->
     step (State (Sset k ex) c e h ghe)
          (State Sskip c (update_env e k (Some v))  h ghe)
+| step_assign:
+    forall e ghe h ex1 ex2 v c addr,
+    eval_lvalue ex1 e h addr ->
+    eval_expr ex2 e h v ->
+    step (State (Sassign ex1 ex2) c e h ghe)
+         (State Sskip c e (upd_heap h addr v) ghe)
          
 (*Conditionals*)         
 | step_ifthenelse: forall e ghe h a v ty s1 s2 k b,
@@ -161,9 +188,14 @@ Inductive safe_state:
     safe_state (State Scontinue (Kseq s k) e h ghe)
 | safe_break_seq: forall s k e ghe h,
     safe_state (State Sbreak (Kseq s k) e h ghe)
-| safe_assign: forall e ghe h ex2 k v c,
+| safe_set: forall e ghe h ex2 k v c,
     eval_expr ex2 e h v ->
     safe_state (State (Sset k ex2) c e h ghe)
+| safe_assign:
+    forall e ghe h ex1 ex2 v c addr,
+    eval_lvalue ex1 e h addr ->
+    eval_expr ex2 e h v ->
+    safe_state (State (Sassign ex1 ex2) c e h ghe)
                
 | safe_ifthenelse1: forall e ghe h a v ty s1 s2 k b,
     eval_expr a e h v ->

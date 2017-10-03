@@ -9,6 +9,8 @@ Require Import compcert.common.Memory.
 
 Require Import Coq.Classes.Morphisms.
 
+Require Import VCC.Tactics.
+Require Import VCC.Freshvars.
 Require Import VCC.Basics.
 Require Import VCC.Environment.
 Require Import VCC.Heap.
@@ -105,11 +107,14 @@ Inductive eval_gexpr' (e:renv)(h:heap)(ghe:genv):
 with eval_glvalue' (e:renv)(h:heap)(ghe:genv): gexpr -> (block* ptrofs) -> Prop :=
   | eval_GEderef: forall a adr,
       eval_gexpr' e h ghe a (RV (Vptr adr)) ->
-      eval_glvalue' e h ghe  (GEderef a) adr.
+      eval_glvalue' e h ghe  (GEderef a) adr
+  | eval_G_Ederef: forall (a:expr) adr,
+      eval_expr' e h a (Vptr adr) ->
+      eval_glvalue' e h ghe (Ederef a) adr.
 
 Definition eval_gexpr ex (e:renv)(h:heap)(ghe:genv):= eval_gexpr' e h ghe ex.
 Definition eval_glvalue ex (e:renv)(h:heap)(ghe:genv):= eval_glvalue' e h ghe ex.
-
+        
 Global Instance Equivalenc_env_equiv_gexpr: forall ex, Equivalence (env_equiv_gexpr ex).
 Proof.
   constructor.
@@ -137,19 +142,7 @@ Proof.
     rewrite gso; auto.
 Qed.
 
-Ltac revert_but HH:=
-  repeat match goal with
-         | [ H: _ |- _ ] =>
-           progress
-             match H with
-             | HH => idtac
-             | _ => revert H
-             end
-         end.
-Ltac invert HH:=
-  revert_but HH;
-  inversion HH; subst;
-  intros.
+
 Ltac fold_eval_expr:=
   match goal with
     | [  |- context[eval_expr' ?e ?h ?ex ?v] ] =>
@@ -240,6 +233,14 @@ Global Instance Proper_eval_expr_gexpr:
         end; auto;
       try solve[econstructor; eapply IHex; eauto];
       try solve[rewrite H2 in *; auto; simpl; apply PSet.singleton_spec; auto].
+    - econstructor; eauto.
+      econstructor.
+
+      do 2 fold_eval_expr.
+      rewrite <- H3; auto.
+    - econstructor; eauto.
+      econstructor; auto.
+
   Qed.
 
 Global Instance Proper_eval_gexpr:
@@ -262,7 +263,11 @@ Global Instance Proper_eval_expr_glvalue:
       end.
     induction ex; intros; split; intros HH; invert HH;
       econstructor; repeat fold_eval_gexpr;
-        rewrite H in *; rewrite H1 in *; assumption.
+        try solve [rewrite H in *; rewrite H1 in *; assumption].
+    - do 2 fold_eval_expr.
+      rewrite <- H; auto.
+    - do 2 fold_eval_expr.
+      rewrite H; auto.
   Qed.
 
 Global Instance Proper_eval_glvalue:
@@ -271,4 +276,70 @@ Proof.
   intros ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?; subst.
   eapply Proper_eval_expr_glvalue; auto.
   apply env_equiv_expr_equiv; auto.
+Qed.
+
+(* Equivalence between eval_expr/eval_gexpr when the expression is not ghost*)
+Lemma eval_gexpr_expr:
+  forall (ex : expr) (e : renv) (h : heap) (ghe : genv)  (v : val)
+    (H1 : eval_gexpr ex e h ghe v),
+    eval_expr ex e h v.
+Proof.
+  induction ex; intros; destruct_eval_gexpr; auto.
+  repeat (econstructor; eauto).
+Qed.
+
+Lemma eval_expr_gexpr:
+  forall (e : renv) (h : heap) (ghe : genv) (ex2 : expr) (v : val)
+    (H1 : eval_expr ex2 e h v),
+    eval_gexpr ex2 e h ghe v.
+Proof. intros. invert H1; econstructor; eauto. Qed.
+Lemma lvalue_glvalue:
+  forall (e : renv) (h : heap) (ghe : genv) (ex1 : expr) (addr : block * ptrofs)
+    (H: eval_lvalue ex1 e h addr),
+    eval_glvalue ex1 e h ghe addr.
+Proof. intros; invert H; econstructor; eauto. Qed.
+
+
+Lemma deref_loc_functional:
+  forall (adr0 : block * ptrofs) (h : heap) (v v' : val),
+    deref_loc h adr0 v ->
+    deref_loc h adr0 v' ->
+    v = v'.
+Proof.
+  intros adr0 h v v' H0 H3.
+  invert H0; invert H3. rewrite H1 in H; invert H. auto.
+Qed.
+
+Lemma eval_expr_functional:
+  forall ex e h v v',
+    eval_expr ex e h v ->
+    eval_expr ex e h v' ->
+    v = v'.
+Proof.
+  induction ex; intros;
+    destruct_eval_expr; auto; subst_find; auto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by
+        (eapply IHex; eauto).
+    invert HH.
+    erewrite deref_loc_functional; eauto.
+Qed.
+Lemma eval_gexpr_functional:
+  forall ex e h ghe v v',
+    eval_gexpr ex e h ghe v ->
+    eval_gexpr ex e h ghe v' ->
+    v = v'.
+Proof.
+  induction ex; intros;
+    destruct_eval_gexpr; destruct_eval_expr; auto; subst_find; auto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
+    invert HH. f_equal; eapply deref_loc_functional; eauto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
+    invert HH. f_equal; eapply deref_loc_functional; eauto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
+    invert HH. f_equal; eapply deref_loc_functional; eauto.
+  - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
+    invert HH. f_equal; eapply deref_loc_functional; eauto.
+  - assert (HH: (RV (Vptr adr)) = (Vptr adr0)) by (eapply IHex; eauto).
+    invert HH. 
+    f_equal; eapply deref_loc_functional; eauto.
 Qed.
