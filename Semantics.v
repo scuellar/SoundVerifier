@@ -97,7 +97,11 @@ Proof.
     pose proof (expr_type_eval_pointers _ _ _ _ _ _ H0 H2).
     destruct x; invert H4.
     eexists; reflexivity.
-Qed.
+  + destruct_expr_type.
+    destruct_eval_expr; simpl_find.
+    subst ty.
+    admit. (* should be a property of eval_binop*)
+Admitted.
 
 Inductive step: state -> state-> Prop:=
 | step_skip: forall e ghe h s c,

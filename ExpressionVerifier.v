@@ -17,7 +17,7 @@ Require Import VCC.AssertionSemantics.
 Import Expressions.
 
 
-(*An expressions are defined*)
+(*An expressions is defined*)
 Fixpoint assert_expr_defined (ex:expr): assertion:=
   (match ex with
     Econst_int v ty => Atrue
@@ -26,6 +26,10 @@ Fixpoint assert_expr_defined (ex:expr): assertion:=
     let p:= fresh_var empty in
     let ty':= type_of_expr ex' in
     Agexists p ((GEtempvar p ty')== ex' /\ Aalloc p)
+  | Ebinop op ex1 ex2 ty =>
+    assert_expr_defined ex1 /\
+    assert_expr_defined ex2 /\
+    Atrue (* Need type correctness?? *)
    end /\
    Aexpr_type ex (type_of_expr ex) 
   )%assert.
@@ -43,7 +47,13 @@ Fixpoint assert_gexpr_defined (ex:gexpr): assertion:=
     let xp:= fresh_var (free_vars_expr ex' ) in
     let ty':= type_of_gexpr ex' in
     (Agexists xp ((GEtempvar xp ty')== ex' /\ Aalloc xp))%assert
+  | GEbinop op ex1 ex2 ty =>
+    assert_gexpr_defined ex1 /\
+    assert_gexpr_defined ex2 /\
+    Atrue (* Need type correctness?? *)
+    
   end.
+
 Fixpoint assert_lvalue_defined (ex:expr): assertion:=
   match ex with
     Econst_int v _ => Afalse
@@ -52,6 +62,7 @@ Fixpoint assert_lvalue_defined (ex:expr): assertion:=
     let xp:= fresh_var empty in
     let ty':= type_of_expr ex' in
     (Agexists xp ((Etempvar xp ty')== ex'))%assert
+  | Ebinop _ _ _ _ => Afalse
   end.
 
 (* Correctness the previous three functions*)
@@ -78,6 +89,9 @@ Proof.
     destruct_eval_expr.
     simpl_find.
     eapply eval_gexpr_expr; eauto.
+  - (* binop *)
+    eexists. econstructor.
+    
 Qed.
 Lemma gexpr_defined_safe:
   forall (ex : gexpr) ghe (e : env) (h : heap),
