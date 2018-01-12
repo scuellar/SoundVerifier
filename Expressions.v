@@ -426,8 +426,20 @@ Qed.
       eval_binop op v1 v2 v ->
       eval_binop op v1 v2 v' ->
       v = v'.
-    Admitted.
-
+ Admitted.
+ Lemma eval_gbinop_functional: forall op v1 v2 v v',
+      eval_gbinop op v1 v2 v ->
+      eval_gbinop op v1 v2 v' ->
+      v = v'.
+ Admitted.
+ Lemma eval_ubinop_functional: forall op v1 v2 v v',
+      eval_ubinop op v1 v2 v ->
+      eval_ubinop op v1 v2 v' ->
+      v = v'.
+   intros. inversion H; subst; inversion H0; subst; f_equal;
+             first [eapply eval_binop_functional| eapply eval_gbinop_functional]; eauto.
+ Qed.
+ 
 Lemma eval_expr_functional:
   forall ex e h v v',
     eval_expr ex e h v ->
@@ -448,6 +460,7 @@ Proof.
     erewrite (IHex1 _ _ v1 v0); eauto.
     erewrite (IHex2 _ _ v2 v3); eauto.
 Qed.
+ 
 Lemma eval_gexpr_functional:
   forall ex e h ghe v v',
     eval_gexpr ex e h ghe v ->
@@ -456,6 +469,12 @@ Lemma eval_gexpr_functional:
 Proof.
   induction ex; intros;
     destruct_eval_gexpr; destruct_eval_expr; auto; subst_find; auto.
+
+  (*binop*)
+  - f_equal; eapply eval_binop_functional; eauto.
+    replace v1 with v3 by (eapply eval_expr_functional; eauto).
+    replace v2 with v4 by (eapply eval_expr_functional; eauto); assumption.
+  
   - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
     invert HH. f_equal; eapply deref_loc_functional; eauto.
   - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
@@ -467,6 +486,11 @@ Proof.
   - assert (HH: (RV (Vptr adr)) = (Vptr adr0)) by (eapply IHex; eauto).
     invert HH. 
     f_equal; eapply deref_loc_functional; eauto.
+
+    (*ubinop*)
+  - eapply eval_ubinop_functional; eauto.
+    erewrite (IHex1 _ _ _ _ _ H5); eauto.
+    erewrite (IHex2 _ _ _ _ _ H6); eauto.
 Qed.
 
 
@@ -495,11 +519,19 @@ Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
   | _, _ => False
   end.
 
+Definition binop_type: binary_operation -> type -> type -> type -> Prop. Admitted.
+
 Fixpoint expr_type (ex:expr)(e:env)(h:heap)(ty:type): Prop:=
   match ex with
   | Econst_int _ ty' => ty = Tint /\ ty = ty'
   | Etempvar x ty' => exists v, find e x = Some v /\ val_type h v ty /\ ty = ty'
   | Ederef ex' ty' =>  expr_type ex' e h (Tpointer ty) /\ ty = ty'
+  | Ebinop op ex1 ex2 ty' =>
+    exists ty1 ty2,
+    expr_type ex1 e h ty1 /\
+    expr_type ex2 e h ty2 /\
+    binop_type op ty1 ty2 ty /\
+    ty = ty'
   end.
 
 Ltac destruct_expr_type:=
@@ -509,15 +541,15 @@ Ltac destruct_expr_type:=
     | Econst_int _ _ => destruct H as (?&?)
     | Etempvar _ _ => destruct H as (?&?&?&?)
     | Ederef _ _ => destruct H as (?&?)
+    | Ebinop _ _ _ _ => destruct H as (?&?&?&?&?&?)
     end end.
 
 Lemma expr_type_type_of_expr:
   forall e0 e h ty,
   expr_type e0 e h ty ->
   type_of_expr e0 = ty.
-Proof. induction e0; simpl;
-         intros; destruct_and ; auto.
-       destruct H as (?&?&?&?); auto.
+Proof.
+  induction e0; intros; destruct_expr_type; auto.
 Qed.
        
 Fixpoint wt_expr (ex:expr)(ty:type):=
@@ -525,6 +557,11 @@ Fixpoint wt_expr (ex:expr)(ty:type):=
   | Econst_int i ty' => ty = ty'
   | Etempvar _ ty' => ty = ty'
   | Ederef ex' ty' => ty = ty' /\ wt_expr ex' (Tpointer ty)
+  | Ebinop op ex1 ex2 ty' => exists ty1 ty2,
+                              wt_expr ex1 ty1 /\
+                              wt_expr ex2 ty2 /\
+                              ty = ty'
+                            
   end.
 
 Lemma eval_expr_type:
@@ -549,7 +586,13 @@ Proof.
       end.  
       simpl; rewrite H.
       destruct ty0; auto.
-Qed.
+  - (* destruct_eval_expr.
+    destruct H1 as (ty1&ty2&?&?&?); subst.
+    exists ty1, ty2.
+    repeat split.
+    + eapply IHex1; eauto. *)
+    admit.
+Admitted.
 
 Lemma expr_type_eval_pointers:
   forall ex e h v ty ty0,
@@ -570,7 +613,11 @@ Proof.
     simpl in H.
     invert H1.
     destruct ty0;  rewrite H in H2; auto.
-Qed.
+  - (*binop*)
+    destruct_eval_expr.
+    destruct_expr_type.
+    admit.
+Admitted.
 
 Global Instance Proper_expr_type_expr: Proper (Logic.eq ==> env_equiv ==> Logic.eq ==>Logic.eq ==> Logic.iff) expr_type.
 Proof.
@@ -580,8 +627,10 @@ Proof.
   | [ t: type |- _ ] => revert t
   | [ h: heap |- _ ] => revert h
   end.
-  induction y; simpl; intros; try rewrite H0; first[ reflexivity| f_equiv; apply IHy].
-Qed.
+  induction y; try (simpl; intros; try rewrite H0; first[ reflexivity| f_equiv; apply IHy]).
+  (*binopo*)
+  - admit.
+Admitted.
 
 Fixpoint gval_type (gv:gval)(gty:gtype):Prop:=
   match gv, gty with
