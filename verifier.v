@@ -29,9 +29,9 @@ Section Evaluator.
 (*The follwing determine if an expression is true or false*)
 (*FIXEME: Resolve the missing cases (comparing pointers?) *)
 Definition bool_true (ex:expr):assertion:=
-  (~ Econst_int Int.zero  == ex /\ Aexpr_type ex Tint)%assert.
+  (~ Econst_int Int.zero Tint  == ex /\ Aexpr_type ex Tint)%assert.
 Definition bool_false (ex:expr):assertion:=
-  (Econst_int Int.zero  == ex /\ Aexpr_type ex Tint)%assert.
+  (Econst_int Int.zero Tint  == ex /\ Aexpr_type ex Tint)%assert.
 
 (*Minimal weakest pre is the minimal requirements to take a step. *)
 (*This is different to the weakes_pre that allows to continue execution.*)
@@ -59,7 +59,7 @@ Fixpoint minimal_weakest_pre (stm:statement)(*Postcondition = True*) :assertion:
       assert_lvalue_defined ex1 /\
       let p:= fresh_var (free_vars_expr ex1) in
       Aalloc p /\
-      Agexists p (Aref_eq ex1 (GEtempvar p) )
+      Agexists p (Aref_eq ex1 (GEtempvar p (type_of_expr ex1)) )
      )%assert
   | Sseq x x0 => minimal_weakest_pre x
   | Sifthenelse ex s1 s2 =>
@@ -79,13 +79,14 @@ Notation obligations:= (list (assertion * assertion)).
 Fixpoint strongest_post_ghost (phi:assertion)(gstm:gstatement): assertion:=
   match gstm with
   | GSskip => phi
-  | GSset x ex => 
+  | GSset x ex =>
+    let ty':=type_of_gexpr ex in
     let temp:= fresh_var
                  (union (free_vars phi)
                         (union (free_vars_expr ex) (singleton x)))  in
     Agexists temp
-             ((GEtempvar x == GEtempvar temp) /\
-              (Agexists x ((GEtempvar temp == ex) /\
+             ((GEtempvar x ty' == GEtempvar temp ty') /\
+              (Agexists x ((GEtempvar temp ty' == ex) /\
                            phi)))%assert
   | GSseq stm1 stm2 => strongest_post_ghost (strongest_post_ghost phi stm1) stm2
   end.
@@ -95,14 +96,17 @@ Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
   | Sskip =>  phi
   | Sset x ex => (* id = expr*)
     (*Ex. temp. x=temp /\ Ex. x.  temp = e /\ P*)
+    let ty':=type_of_gexpr ex in
     let temp:= fresh_var
                  (union (free_vars phi)
                         (union (free_vars_expr ex) (singleton x)))  in
     Agexists temp
-             ((Etempvar x == GEtempvar temp) /\
-              (Aexists x ((GEtempvar temp == ex) /\
+             ((Etempvar x ty' == GEtempvar temp ty') /\
+              (Aexists x ((GEtempvar temp ty' == ex) /\
                           phi)))%assert
   | Sassign ex1 ex2 =>
+    let ty1:= type_of_expr ex1 in
+    let ty2:= type_of_expr ex2 in
     let h_temp:= fresh_var (free_vars phi) in
     let v:= fresh_var
               (union (singleton h_temp)
@@ -117,8 +121,8 @@ Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
              (Agexists h_temp
                        (Aequal_heap h_temp /\
                         Aexists_heap
-                          (Aref_eq ex1 (GEtempvar p) /\
-                           Agexists v (GEtempvar v == ex2 /\
+                          (Aref_eq ex1 (GEtempvar p ty1) /\
+                           Agexists v (GEtempvar v ty2 == ex2 /\
                            (UPDATE p v h_temp /\ phi))))))%assert
   | Sghost gstm => strongest_post_ghost phi gstm
   | Sseq stm1 stm2 => strongest_post (strongest_post phi stm1) stm2
@@ -422,44 +426,60 @@ End Evaluator.
   ============================
   [e, h, ghe]|= (if b then bool_true ex else bool_false ex)
 
-*)
+ *)
+
+Lemma expr_type_wt:
+  forall (ex : expr) (e : renv) (h : heap) ty,
+    expr_type ex e h ty -> wt_expr ex ty.
+Proof.
+  induction ex; intros; destruct_expr_type; auto.
+  split; auto.
+  eapply IHex; eauto.
+Qed.
 
 
 Lemma eval_expr_bool_spec:
-  forall (ex:expr) e h ghe (v:val) ty b,
+  forall (ex:expr) e h ghe (v:val) b,
     eval_expr ex e h v ->
-    bool_val v ty = Some b ->
+    expr_type ex e h Tint ->
+    bool_val v (type_of_expr ex) = Some b ->
     [e, h, ghe]|= (if b then  (bool_true ex) else (bool_false ex)) .
 Proof.
   intros; simpl in *.
-  destruct v; destruct ty; inversion H0.
+  destruct v; destruct (type_of_expr ex) eqn:HH; inversion H1.
   destruct (Int.eq i Int.zero) eqn:Niz; simpl.
   - apply int_eq_iff in Niz; subst.
     split.
     + eexists; split; econstructor; eauto. econstructor.
     + eapply eval_expr_type; eauto.
       simpl; trivial.
-    
+      destruct ex; simpl in *; auto.
+      split; auto.
+      destruct H0.
+      eapply expr_type_wt; eauto.
+      
   - split.
     + intros [v []].
       destruct_eval_gexpr;
       destruct_eval_expr; subst.
     * eapply int_neq_iff; try reflexivity; eauto.
     * simpl_find; eapply int_neq_iff; try reflexivity; eauto.
-    * pose proof (eval_expr_functional _ _ _ _ _ H1 H2) as HH;
-        invert HH.
-      pose proof (deref_loc_functional _ _ _ _ H0 H3) as HH'; invert HH'.
+    * pose proof (eval_expr_functional _ _ _ _ _ H1 H3) as HH';
+        invert HH'.
+      pose proof (deref_loc_functional _ _ _ _ H0 H2) as HH''; invert HH''.
       eapply int_neq_iff; try reflexivity; eauto.
       
-    * assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
-      invert HH.
+    * assert (HH': (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
+      invert HH'.
       eapply int_neq_iff in Niz; apply Niz.
       cut (Vint i = val_zero).
       { intros HH0; injection HH0; auto. }
       { eapply deref_loc_functional; eauto. }
     + eapply eval_expr_type; eauto.
       simpl; trivial.
-Qed.
+
+      eapply expr_type_wt; eauto.
+Qed. 
 
 Definition invariant (st:state):=
   match st with
@@ -526,13 +546,13 @@ Qed.
 Ltac expr_entailer:=
   match goal with
   | _ => assumption
-  | [ |- eval_expr (Etempvar ?x) (update_env _ ?x' ?v) _ ?v' ] =>
+  | [ |- eval_expr (Etempvar ?x _) (update_env _ ?x' ?v) _ ?v' ] =>
     match x with
       x' =>
       (*should I check v' = Some v ?*)
       solve [econstructor; rewrite gss; auto]
     end
-  | [ |- eval_expr (Etempvar ?x') (update_env _ ?temp' _) _ _ ] =>
+  | [ |- eval_expr (Etempvar ?x' _) (update_env _ ?temp' _) _ _ ] =>
     fail (* rewrite expr_equiv_tempvar by (first [assumption|symmetry; assumption])  *)
   | [  |- eval_expr ?ex ?e _ _ ] =>
     match goal with
@@ -604,8 +624,10 @@ Proof.
   exists (strongest_post phi (Sset x ex)).
   (*This should be reformulated and maybe turn into lemma*)
   split; [|split].
-  - repeat (first [eexists | split]); 
+  - repeat (first [eexists | split]);
       gexpr_entailer.
+    
+    
     simpl_env_gexpr.
 
     solve_assertion.
@@ -651,11 +673,13 @@ Qed.
 
 
 (* 4) Ifthenelse*)
+
 Lemma ifthenelse_preservation:
-  forall e h ghe k ex v ty s1 s2 b,
+  forall e h ghe k ex v s1 s2 b,
     invariant (State (Sifthenelse ex s1 s2) k e h ghe) ->
     eval_expr ex e h v ->
-    bool_val v ty = Some b ->
+    expr_type ex e h Tint ->
+    bool_val v (type_of_expr ex) = Some b ->
     invariant (State (if b then s1 else s2) k e h ghe).
 Proof.
   intros until b;
@@ -664,11 +688,10 @@ Proof.
   exists ((if b then (bool_true ex) else (bool_false ex)) /\ phi)%assert.
   split; [|split].
   - split; auto.
-
     destruct stm_entailments as [? HH];
       apply list_entailment_app in HH; destruct HH.
-    pose proof (eval_expr_bool_spec ex e h ghe _ _ _ EVALex BOOLval);
-      clear -H2; destruct b; auto.
+    pose proof (eval_expr_bool_spec ex e h ghe _ _ EVALex BOOLval H);
+      eauto.
   - simpl in stm_entailments.
     destruct stm_entailments as [? HH];
       apply list_entailment_app in HH; destruct HH.
@@ -723,7 +746,9 @@ Proof.
     
   (*Conditional *)
   - eapply ifthenelse_preservation; eauto.
-
+    destruct_inv. eapply H0 in phi_OK; simpl in phi_OK.
+    destruct_and; auto.
+     
   (*Loops *)
   - easy_invariant I1.
   - destruct H1; subst; easy_invariant I1.
@@ -785,8 +810,8 @@ Proof.
     invert H3.
     clear H cont_entailment.
     (*For eval_expr e1*)
-    eapply expr_defined_safe in H1.
-    destruct H1 as (?&H1).
+    eapply expr_defined_safe in H0.
+    destruct H0 as (?&H0).
     
     econstructor.
     + econstructor.
@@ -803,7 +828,8 @@ Proof.
     simpl in IS_BOOL.
     destruct (tint_is_bool _ _ _ _ IS_BOOL H2). 
     econstructor; try eassumption.
-
+    erewrite expr_type_type_of_expr; eauto.
+    
   - (* break *)
     simpl in *; destruct_and.
     destruct k; 

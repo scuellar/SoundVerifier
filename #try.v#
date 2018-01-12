@@ -1,6 +1,0 @@
-Fixpoint P (n: nat){measure y}  :=
-  match n with
-    O => True | S n' => forall y, n<y -> P y
-  end.
-
-          

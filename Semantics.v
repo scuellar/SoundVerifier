@@ -88,14 +88,14 @@ Proof.
   induction e0.
   + destruct_eval_expr.
     simpl. eexists; reflexivity.
-  + destruct H as (?&?&?).
+  + destruct_expr_type.
     destruct_eval_expr; simpl_find.
-    destruct x0; invert H2.
+    destruct x0; invert H1.
     eexists; reflexivity.
-  + simpl in H.
-    clear IHe0; invert H0.
-    pose proof (expr_type_eval_pointers _ _ _ _ _ H0 H2).
-    destruct x; invert H3.
+  + destruct_expr_type.
+    invert H0.
+    pose proof (expr_type_eval_pointers _ _ _ _ _ _ H0 H2).
+    destruct x; invert H4.
     eexists; reflexivity.
 Qed.
 
@@ -123,9 +123,9 @@ Inductive step: state -> state-> Prop:=
          (State Sskip c e (upd_heap h addr v) ghe)
          
 (*Conditionals*)         
-| step_ifthenelse: forall e ghe h a v ty s1 s2 k b,
+| step_ifthenelse: forall e ghe h a v s1 s2 k b,
     eval_expr a e h v ->
-    bool_val v ty = Some b ->
+    bool_val v (type_of_expr a) = Some b ->
     step (State (Sifthenelse a s1 s2) k e h ghe)
          (State (if b then s1 else s2) k e h ghe)
          
@@ -197,9 +197,9 @@ Inductive safe_state:
     eval_expr ex2 e h v ->
     safe_state (State (Sassign ex1 ex2) c e h ghe)
                
-| safe_ifthenelse1: forall e ghe h a v ty s1 s2 k b,
+| safe_ifthenelse1: forall e ghe h a v s1 s2 k b,
     eval_expr a e h v ->
-    bool_val v ty = Some b ->
+    bool_val v  (type_of_expr a) = Some b ->
     safe_state (State (Sifthenelse a s1 s2) k e h ghe)
         
 | safe_steploop: forall  I1 I2 s1 s2 k e ghe h,

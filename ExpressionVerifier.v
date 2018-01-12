@@ -19,33 +19,39 @@ Import Expressions.
 
 (*An expressions are defined*)
 Fixpoint assert_expr_defined (ex:expr): assertion:=
-  match ex with
-    Econst_int v => Atrue
-  | Etempvar id => Adefined id
-  | Ederef ex' =>
+  (match ex with
+    Econst_int v ty => Atrue
+  | Etempvar id ty => Adefined id
+  | Ederef ex' ty =>
     let p:= fresh_var empty in
-    (Agexists p ((GEtempvar p)== ex' /\ Aalloc p))%assert
-  end.
+    let ty':= type_of_expr ex' in
+    Agexists p ((GEtempvar p ty')== ex' /\ Aalloc p)
+   end /\
+   Aexpr_type ex (type_of_expr ex) 
+  )%assert.
+
 Fixpoint assert_gexpr_defined (ex:gexpr): assertion:=
   match ex with
   | Rexpr ex' => assert_expr_defined ex'
-  | GEconst_ptr p =>
+  | GEconst_ptr p ty' =>
     let xp:= fresh_var empty in
-    (Agexists xp ((Etempvar xp)== GEconst_ptr p) /\ Aalloc xp)%assert 
-  | GEconst_nat _ => Atrue
-  | GEconst_bool _ => Atrue
-  | GEtempvar id => Agdefined id
-  | GEderef ex' => 
+    (Agexists xp ((Etempvar xp ty')== ex) /\ Aalloc xp)%assert 
+  | GEconst_nat _  _=> Atrue
+  | GEconst_bool _ _ => Atrue
+  | GEtempvar id _ => Agdefined id
+  | GEderef ex' _ => 
     let xp:= fresh_var (free_vars_expr ex' ) in
-    (Agexists xp ((GEtempvar xp)== ex' /\ Aalloc xp))%assert
+    let ty':= type_of_gexpr ex' in
+    (Agexists xp ((GEtempvar xp ty')== ex' /\ Aalloc xp))%assert
   end.
 Fixpoint assert_lvalue_defined (ex:expr): assertion:=
   match ex with
-    Econst_int v => Afalse
-  | Etempvar id => Afalse
-  | Ederef ex' =>
+    Econst_int v _ => Afalse
+  | Etempvar id _ => Afalse
+  | Ederef ex' ty =>
     let xp:= fresh_var empty in
-    (Agexists xp ((Etempvar xp)== ex'))%assert
+    let ty':= type_of_expr ex' in
+    (Agexists xp ((Etempvar xp ty')== ex'))%assert
   end.
 
 (* Correctness the previous three functions*)
@@ -55,12 +61,12 @@ Lemma expr_defined_safe:
     exists v, eval_expr ex e h v.
 Proof.
   induction ex; try solve[do 2 econstructor];
-    intros ? ? ? H.
+    intros ? ? ? [].
   - simpl in H;
       destruct (find e id) eqn:HH; [|contradict H; reflexivity].
     eexists; econstructor; eauto.
   - destruct H as (v1 &( v2 & ? & ?) & adr & ? & ?).
-    destruct (h adr) eqn:HH; [|contradiction H2; reflexivity].
+    destruct (h adr) eqn:HH; [|contradiction H3; reflexivity].
     eexists; econstructor;
       econstructor; try eassumption.
     fold_eval_expr.
@@ -71,7 +77,6 @@ Proof.
     subst HH0.
     destruct_eval_expr.
     simpl_find.
-    invert H0; eauto.
     eapply eval_gexpr_expr; eauto.
 Qed.
 Lemma gexpr_defined_safe:
