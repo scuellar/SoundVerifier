@@ -106,7 +106,9 @@ Fixpoint eval_assert (P:assertion)(re:renv)(rh:heap)(ghe:genv): Prop:=
     exists xh_,
     find ghe xh = Some (GV (GVheap xh_)) /\
     rh = xh_
-  | Aexpr_type ex ty => expr_type ex re rh ty
+  | Aexpr_type ex ty =>
+  expr_type ex re rh ty
+    (*exists v, eval_expr ex re rh v /\ val_type rh v ty *)
   | Agexpr_type ex ty => gexpr_type ex re rh ghe ty
   | Aref_eq ex1 ex2 =>
     exists v,

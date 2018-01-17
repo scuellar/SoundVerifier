@@ -6,7 +6,7 @@ Import PositiveSet. Module PSet:= PositiveSet. (*For positive-indexed sets*)
 
 Require Import VCC.Expressions.
 
-(*+ First step: bearest of verifiers *)
+(*+ Syntax *)
 
 
 Require Import VCC.Basics.

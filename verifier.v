@@ -450,7 +450,7 @@ Proof.
   - apply int_eq_iff in Niz; subst.
     split.
     + eexists; split; econstructor; eauto. econstructor.
-    + auto.
+    + eauto.
   - split.
     + intros [v []].
       destruct_eval_gexpr;

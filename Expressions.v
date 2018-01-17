@@ -43,7 +43,7 @@ Inductive binary_operation : Type :=
 Definition sem_binary_operation ge op v1 (typeof a1) v2 (typeof a2)
 *)
 
-(** * 3) Expressions *)
+(** * Expressions *)
 Inductive expr : Type :=
   | Econst_int ( i: int) (ty: type) (* integer constant*)
   | Etempvar (id: ident) (ty: type)  (**r constant *)
@@ -60,6 +60,7 @@ Definition type_of_expr (ex:expr):=
 
 Notation expr_zero:= (Econst_int Int.zero Tint).
 
+(*Ghost expressions*)
 Inductive gexpr : Type :=
   | Rexpr (ex: expr)
   | GEconst_ptr ( adr: address) (ty: type)
@@ -217,8 +218,6 @@ Definition eval_ptr_ptr_binop (m:Basics.heap)(op:binary_operation) (p1 p2:positi
     else None 
   | _ => None
   end. 
-    
-  
 
 Definition eval_binop (h:heap) (ty:type) (op:binary_operation) (v1:val)(v2:val): option val:=
   match v1, v2 with
@@ -233,6 +232,7 @@ Definition eval_binop (h:heap) (ty:type) (op:binary_operation) (v1:val)(v2:val):
   | _, _ => None 
   end.
 
+(*pure ghost binary operations*)
 Definition eval_gbinop (h:heap) (ty:type) (op:binary_operation)(v1:gval)(v2:gval): option gval:=
   match v1, v2 with
   | GVptr p1, GVptr p2 =>
@@ -260,7 +260,7 @@ Definition eval_ubinop (h:heap) (ty:type) (op:binary_operation)(v1:uval)(v2:uval
   | _,_=> None
   end.
 
-(** * 5) Evaluating expression  *)
+(** * Evaluating expression  *)
 
 (* Inductive eval_ubinop:  binary_operation -> uval -> uval -> uval -> Prop:=
 | eval_Rbinop: forall op v1 v2 v,
