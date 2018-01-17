@@ -442,7 +442,7 @@ Lemma eval_expr_bool_spec:
     eval_expr ex e h v ->
     expr_type ex e h Tint ->
     bool_val v (type_of_expr ex) = Some b ->
-    [e, h, ghe]|= (if b then  (bool_true ex) else (bool_false ex)) .
+    [e, h, ghe]|= (if b then (bool_true ex) else (bool_false ex)) .
 Proof.
   intros; simpl in *.
   destruct v; destruct (type_of_expr ex) eqn:HH; inversion H1.
@@ -450,9 +450,7 @@ Proof.
   - apply int_eq_iff in Niz; subst.
     split.
     + eexists; split; econstructor; eauto. econstructor.
-    + eapply eval_expr_type; eauto.
-      simpl; trivial.
-      eapply expr_type_wt; eauto.
+    + auto.
   - split.
     + intros [v []].
       destruct_eval_gexpr;
@@ -463,7 +461,7 @@ Proof.
         pose proof (eval_expr_functional _ _ _ _ _ H0 H5) as HH';
           invert HH'.
         pose proof (eval_expr_functional _ _ _ _ _ H1 H6) as HH''; invert HH''.
-        pose proof (eval_binop_functional op _ _ _ _ H7 H3) as HH'''; invert HH'''.
+        rewrite H7 in H3; invert H3.
         eapply int_neq_iff; try reflexivity; eauto.
       * pose proof (eval_expr_functional _ _ _ _ _ H1 H3) as HH';
           invert HH'.
@@ -476,10 +474,7 @@ Proof.
       cut (Vint i = val_zero).
       { intros HH0; injection HH0; auto. }
       { eapply deref_loc_functional; eauto. }
-    + eapply eval_expr_type; eauto.
-      simpl; trivial.
-      
-      eapply expr_type_wt; eauto.
+    + auto. 
 Qed. 
 
 Definition invariant (st:state):=
