@@ -16,7 +16,6 @@ Require Import VCC.Semantics.
 Require Import VCC.AssertionSemantics.
 Import Expressions.
 
-
 (*An expressions is defined*)
 Fixpoint assert_expr_defined (ex:expr): assertion:=
   (match ex with
@@ -51,7 +50,6 @@ Fixpoint assert_gexpr_defined (ex:gexpr): assertion:=
     assert_gexpr_defined ex1 /\
     assert_gexpr_defined ex2 /\
     Atrue (* Need type correctness?? *)
-    
   end.
 
 Fixpoint assert_lvalue_defined (ex:expr): assertion:=
@@ -91,8 +89,8 @@ Proof.
     eapply eval_gexpr_expr; eauto.
   - (* binop *)
     eexists. econstructor.
-    
-Qed.
+    admit.
+Admitted.
 Lemma gexpr_defined_safe:
   forall (ex : gexpr) ghe (e : env) (h : heap),
     [e, h, ghe]|= (assert_gexpr_defined ex) ->
@@ -117,4 +115,6 @@ Proof.
     subst HH0.
     simpl_find.
     assumption.
-Qed.
+  - (*binop*)
+    admit.
+Admitted.

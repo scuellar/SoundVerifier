@@ -78,6 +78,7 @@ Definition bool_val (v:val)(ty:type): option bool:=
     Some  (negb (Int.eq n Int.zero)) 
   | _, _ => None
   end.
+
 Lemma tint_is_bool:
   forall (e0 : expr) (e : renv) (h : heap) x,
     expr_type e0 e h Tint ->
@@ -92,10 +93,8 @@ Proof.
     destruct_eval_expr; simpl_find.
     destruct x0; invert H1.
     eexists; reflexivity.
-  + destruct_expr_type.
-    invert H0.
-    pose proof (expr_type_eval_pointers _ _ _ _ _ _ H0 H2).
-    destruct x; invert H4.
+  + pose proof (expr_type_eval _ _ _ _ _ H0 H).
+    destruct x; invert H1.
     eexists; reflexivity.
   + destruct_expr_type.
     destruct_eval_expr; simpl_find.

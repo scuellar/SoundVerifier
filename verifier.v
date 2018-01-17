@@ -20,12 +20,10 @@ Import Expressions.
 
 
 
-    
 (** * Sintactic evaluator*)
 (* Evaluates a continuation and outputs the obligations necessary to verify the program*)
 Section Evaluator.
   
-
 (*The follwing determine if an expression is true or false*)
 (*FIXEME: Resolve the missing cases (comparing pointers?) *)
 Definition bool_true (ex:expr):assertion:=
@@ -435,6 +433,7 @@ Proof.
   induction ex; intros; destruct_expr_type; auto.
   split; auto.
   eapply IHex; eauto.
+  (*binop*) subst; do 2 eexists; split; eauto.
 Qed.
 
 
@@ -453,31 +452,33 @@ Proof.
     + eexists; split; econstructor; eauto. econstructor.
     + eapply eval_expr_type; eauto.
       simpl; trivial.
-      destruct ex; simpl in *; auto.
-      split; auto.
-      destruct H0.
       eapply expr_type_wt; eauto.
-      
   - split.
     + intros [v []].
       destruct_eval_gexpr;
-      destruct_eval_expr; subst.
-    * eapply int_neq_iff; try reflexivity; eauto.
-    * simpl_find; eapply int_neq_iff; try reflexivity; eauto.
-    * pose proof (eval_expr_functional _ _ _ _ _ H1 H3) as HH';
+        destruct_eval_expr; subst.
+      * eapply int_neq_iff; try reflexivity; eauto.
+      * simpl_find; eapply int_neq_iff; try reflexivity; eauto.
+      * (*binop*)
+        pose proof (eval_expr_functional _ _ _ _ _ H0 H5) as HH';
+          invert HH'.
+        pose proof (eval_expr_functional _ _ _ _ _ H1 H6) as HH''; invert HH''.
+        pose proof (eval_binop_functional op _ _ _ _ H7 H3) as HH'''; invert HH'''.
+        eapply int_neq_iff; try reflexivity; eauto.
+      * pose proof (eval_expr_functional _ _ _ _ _ H1 H3) as HH';
+          invert HH'.
+        pose proof (deref_loc_functional _ _ _ _ H0 H2) as HH''; invert HH''.
+        eapply int_neq_iff; try reflexivity; eauto.
+        
+      * assert (HH': (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
         invert HH'.
-      pose proof (deref_loc_functional _ _ _ _ H0 H2) as HH''; invert HH''.
-      eapply int_neq_iff; try reflexivity; eauto.
-      
-    * assert (HH': (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
-      invert HH'.
-      eapply int_neq_iff in Niz; apply Niz.
+        eapply int_neq_iff in Niz; apply Niz.
       cut (Vint i = val_zero).
       { intros HH0; injection HH0; auto. }
       { eapply deref_loc_functional; eauto. }
     + eapply eval_expr_type; eauto.
       simpl; trivial.
-
+      
       eapply expr_type_wt; eauto.
 Qed. 
 

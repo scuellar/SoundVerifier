@@ -30,9 +30,7 @@ Inductive binary_operation : Type :=
   | Omod : binary_operation             (** remainder ([%]) *)
   | Oand : binary_operation             (** bitwise and ([&]) *)
   | Oor : binary_operation              (** bitwise or ([|]) *)
-  | Oxor : binary_operation             (** bitwise xor ([^]) *)
-  | Oshl : binary_operation             (** left shift ([<<]) *)
-  | Oshr : binary_operation             (** right shift ([>>]) *)
+  | Oxor : binary_operation             (** bitwise xor ([|]) *)
   | Oeq: binary_operation               (** comparison ([==]) *)
   | One: binary_operation               (** comparison ([!=]) *)
   | Olt: binary_operation               (** comparison ([<]) *)
@@ -100,22 +98,189 @@ Inductive deref_loc (h: heap) (adr: block * ptrofs) : val -> Prop :=
       h adr = Some v ->
       deref_loc h adr v.
 
+(** * Evaluating binarry expressions  *)
+
+Definition bool2int (b:bool):=
+  match b with
+    false => Int.zero
+  | true => Int.one
+  end.
+
+Definition eval_int_binop (op:binary_operation) (a:int)(b:int): option val:=
+  Some (Vint
+          match op with
+       | Oadd => (Int.add a b)
+       | Osub => (Int.sub a b) 
+       | Omul => (Int.mul a b) 
+       | Odiv => (Int.divs a b) 
+       | Omod => (Int.mods a b) 
+       | Oand => (Int.and a b) 
+       | Oor => (Int.or a b)
+       | Oxor => (Int.xor a b)
+       | Oeq => (bool2int (Int.eq a b))
+       | One => (bool2int (negb (Int.eq a b)))
+       | Olt => (bool2int (Int.lt a b))
+       | Ole => (bool2int (negb (Int.lt b a)))
+       | Ogt => (bool2int (Int.lt b a))
+       | Oge => (bool2int (negb (Int.lt a b)))
+          end).
+
+Definition eval_nat_binop (op:binary_operation) (a:nat)(b:nat): option gval:=
+  (match op with
+   | Oadd => Some (GVnat (a + b))
+   | Osub => Some (GVnat (a - b))
+   | Omul => Some (GVnat (a * b))
+   | Odiv => Some (GVnat (a/b) )
+   | Omod => Some (GVnat (Nat.modulo a b))
+   | Oeq => Some (GVbool (Nat.eqb a b))
+   | One => Some (GVbool (negb (Nat.eqb a b)))
+   | Olt => Some (GVbool (Nat.ltb a b))
+   | Ole => Some (GVbool (negb (Nat.ltb b a)))
+   | Ogt => Some (GVbool (Nat.ltb b a))
+   | Oge => Some (GVbool (negb (Nat.ltb a b)))
+   | _ => None
+   end)%nat.
+
+Definition eval_bool_binop (op:binary_operation) (a:bool)(b:bool): option bool:=
+  match op with
+  | Oand => Some (a && b) 
+  | Oor => Some (a || b)
+  | Oxor => Some (xorb a b)
+  | _ => None
+  end.
+
+
+Definition eval_ptr_int_binop (ty:type)(op:binary_operation) (p:positive*int)(a:int):
+  option (positive*int):=
+  let (b1,ofs1):= p in
+  match op with
+  | Oadd =>
+    Some (b1,Int.add ofs1 (Int.mul (Int.repr (sizeof ty)) a))
+  | Osub =>
+    Some (b1,Int.sub ofs1 (Int.mul (Int.repr (sizeof ty)) a))
+  | _ => None
+  end.
+
+Definition eq_block := peq.
+Definition valid_ptr (h:Basics.heap) b ofs: bool :=
+  match h (b,ofs) with
+  | None => false
+  | Some _ => true
+  end.
+
+Definition eval_ptr_ptr_binop (m:Basics.heap)(op:binary_operation) (p1 p2:positive*int):
+  option bool:=
+  let (b1,ofs1):= p1 in
+  let (b2,ofs2):= p2 in
+  match op with
+  | Oeq =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some (Int.eq ofs1 ofs2)
+      else Some false
+    else None 
+  | One =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some (negb (Int.eq ofs1 ofs2))
+      else Some true
+    else None 
+  | Olt =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some  (Int.lt ofs1 ofs2)
+      else None
+    else None 
+  | Ogt =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some (negb (Int.lt ofs1 ofs2))
+      else None
+    else None
+  | Ole =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some (negb (Int.lt ofs2 ofs1))
+      else None
+    else None  
+  | Oge =>
+    if (valid_ptr m b1 ofs1 &&
+        valid_ptr m b2 ofs2) then
+      if eq_block b1 b2 then
+        Some (Int.lt ofs2 ofs1)
+      else None
+    else None 
+  | _ => None
+  end. 
+    
+  
+
+Definition eval_binop (h:heap) (ty:type) (op:binary_operation) (v1:val)(v2:val): option val:=
+  match v1, v2 with
+  | Vint n1, Vint n2 =>
+    eval_int_binop op n1 n2
+  | Vptr p, Vint n =>
+    option_map Vptr
+    (eval_ptr_int_binop ty op p n)
+  | Vptr p1, Vptr p2 =>
+    option_map (fun x => Vint (bool2int x))
+    (eval_ptr_ptr_binop h op p1 p2)
+  | _, _ => None 
+  end.
+
+Definition eval_gbinop (h:heap) (ty:type) (op:binary_operation)(v1:gval)(v2:gval): option gval:=
+  match v1, v2 with
+  | GVptr p1, GVptr p2 =>
+    option_map GVbool
+               (eval_ptr_ptr_binop h op p1 p2)
+  | GVnat n1, GVnat n2 =>
+    eval_nat_binop op n1 n2
+  | GVbool b1, GVbool b2 =>
+    option_map GVbool
+      (eval_bool_binop op b1 b2)
+  | _, _ => None 
+  end.
+
+Definition eval_ubinop (h:heap) (ty:type) (op:binary_operation)(v1:uval)(v2:uval): option uval:=
+  match v1, v2 with
+  | RV rv1, RV rv2 =>
+    option_map RV
+    (eval_binop h ty op rv1 rv2)
+  | GV gv1, GV gv2 =>
+    option_map GV
+    (eval_gbinop h ty op gv1 gv2) 
+  | GV (GVptr p), RV (Vint n) =>
+    option_map (fun x => GV (GVptr x))
+               (eval_ptr_int_binop ty op p n)
+  | _,_=> None
+  end.
 
 (** * 5) Evaluating expression  *)
 
-Definition eval_binop : binary_operation -> val -> val -> val -> Prop.
-Admitted.
-
-Definition eval_gbinop : binary_operation -> gval -> gval -> gval -> Prop.
-Admitted.
-
-Inductive eval_ubinop:  binary_operation -> uval -> uval -> uval -> Prop:=
+(* Inductive eval_ubinop:  binary_operation -> uval -> uval -> uval -> Prop:=
 | eval_Rbinop: forall op v1 v2 v,
     eval_binop op v1 v2 v ->
     eval_ubinop op v1 v2 v
 | eval_Gbinop: forall op v1 v2 v,
     eval_gbinop op v1 v2 v ->
-    eval_ubinop op v1 v2 v.
+    eval_ubinop op v1 v2 v. *)
+
+Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
+  match v, ty with
+  | Vptr p, Tpointer ty' =>
+    match ty', (h p) with
+      _, Some v' => val_type h v' ty'
+    | Tvoid, _ => True 
+    | _, None => False
+    end 
+  | Vint _, Tint => True
+  | _, _ => False
+  end.
 
 Inductive eval_expr' (e:renv)(h:heap): expr -> val -> Prop :=
   | eval_Econst_int: forall i ty,
@@ -126,7 +291,7 @@ Inductive eval_expr' (e:renv)(h:heap): expr -> val -> Prop :=
   | eval_Ebinop: forall op ex1 ex2 v1 v2 v ty,
       eval_expr' e h ex1 v1 ->
       eval_expr' e h ex2 v2 ->
-      eval_binop op v1 v2 v ->
+      eval_binop h (type_of_expr ex1) op v1 v2 = Some v ->
       eval_expr' e h (Ebinop op ex1 ex2 ty) v
   | eval_Elvalue: forall a adr v,
       eval_lvalue' e h a adr ->
@@ -176,7 +341,7 @@ Inductive eval_gexpr' (e:renv)(h:heap)(ghe:genv):
 | geval_GEbinop: forall op ex1 ex2 v1 v2 v ty,
       eval_gexpr' e h ghe ex1 v1 ->
       eval_gexpr' e h ghe ex2 v2 ->
-      eval_ubinop op v1 v2 v ->
+      eval_ubinop h ty op v1 v2 = Some v ->
       eval_gexpr' e h ghe (GEbinop op ex1 ex2 ty) v
 | eval_GElvalue: forall a adr v,
     eval_glvalue' e h ghe a adr ->
@@ -421,24 +586,6 @@ Proof.
   intros adr0 h v v' H0 H3.
   invert H0; invert H3. rewrite H1 in H; invert H. auto.
 Qed.
-
- Lemma eval_binop_functional: forall op v1 v2 v v',
-      eval_binop op v1 v2 v ->
-      eval_binop op v1 v2 v' ->
-      v = v'.
- Admitted.
- Lemma eval_gbinop_functional: forall op v1 v2 v v',
-      eval_gbinop op v1 v2 v ->
-      eval_gbinop op v1 v2 v' ->
-      v = v'.
- Admitted.
- Lemma eval_ubinop_functional: forall op v1 v2 v v',
-      eval_ubinop op v1 v2 v ->
-      eval_ubinop op v1 v2 v' ->
-      v = v'.
-   intros. inversion H; subst; inversion H0; subst; f_equal;
-             first [eapply eval_binop_functional| eapply eval_gbinop_functional]; eauto.
- Qed.
  
 Lemma eval_expr_functional:
   forall ex e h v v',
@@ -456,9 +603,10 @@ Proof.
     erewrite deref_loc_functional; eauto.
 
    (* Binop*)
-  - eapply eval_binop_functional; eauto.
-    erewrite (IHex1 _ _ v1 v0); eauto.
-    erewrite (IHex2 _ _ v2 v3); eauto.
+  - (* eapply eval_binop_functional; eauto. *)
+    erewrite (IHex1 _ _ v1 v0) in H7; eauto.
+    erewrite (IHex2 _ _ v2 v3) in H7; eauto.
+    rewrite H7 in H2; inversion H2; reflexivity.
 Qed.
  
 Lemma eval_gexpr_functional:
@@ -471,9 +619,10 @@ Proof.
     destruct_eval_gexpr; destruct_eval_expr; auto; subst_find; auto.
 
   (*binop*)
-  - f_equal; eapply eval_binop_functional; eauto.
-    replace v1 with v3 by (eapply eval_expr_functional; eauto).
-    replace v2 with v4 by (eapply eval_expr_functional; eauto); assumption.
+  - f_equal. 
+    replace v1 with v3 in H7 by (eapply eval_expr_functional; eauto).
+    replace v2 with v4 in H7 by (eapply eval_expr_functional; eauto).
+    rewrite H7 in H2; inversion H2; reflexivity.
   
   - assert (HH: (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
     invert HH. f_equal; eapply deref_loc_functional; eauto.
@@ -488,9 +637,9 @@ Proof.
     f_equal; eapply deref_loc_functional; eauto.
 
     (*ubinop*)
-  - eapply eval_ubinop_functional; eauto.
-    erewrite (IHex1 _ _ _ _ _ H5); eauto.
-    erewrite (IHex2 _ _ _ _ _ H6); eauto.
+  - erewrite (IHex1 _ _ _ _ _ H5) in H7; eauto.
+    erewrite (IHex2 _ _ _ _ _ H6) in H7; eauto.
+    rewrite H7 in H2; inversion H2; reflexivity.
 Qed.
 
 
@@ -507,19 +656,39 @@ Qed.
   (*The semantics of assertions is evaluated with respect to an environment*)
   (*Every definition is proved to be invariant under env. equivalence (Proper)*)
 
-Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
-  match v, ty with
-  | Vptr p, Tpointer ty' =>
-    match ty', (h p) with
-      _, Some v' => val_type h v' ty'
-    | Tvoid, _ => True 
-    | _, None => False
-    end 
-  | Vint _, Tint => True
-  | _, _ => False
-  end.
+(*
+nt n1, Vint n2 =>
+    eval_int_binop op n1 n2
+  | Vptr p, Vint n =>
+    option_map Vptr
+    (eval_ptr_int_binop ty op p n)
+  | Vptr p1, Vptr p2 =>
+    option_map (fun x => Vint (bool2int x))
+    (eval_ptr_ptr_binop h op p1 p2)
+  | _, _ => None 
+*)
 
-Definition binop_type: binary_operation -> type -> type -> type -> Prop. Admitted.
+
+Inductive binop_type: binary_operation -> type -> type -> type -> Prop:=
+| Intintint: forall op,
+    binop_type op Tint Tint Tint
+| AddPtrInt: forall ty,
+    binop_type Oadd (Tpointer ty) Tint (Tpointer ty)
+| SubPtrInt: forall ty,
+    binop_type Osub (Tpointer ty) Tint (Tpointer ty)
+| OeqPtrPtr: forall ty1 ty2,
+    binop_type Oeq (Tpointer ty1) (Tpointer ty2) Tint
+| OnePtrPtr: forall ty1 ty2,
+    binop_type One (Tpointer ty1) (Tpointer ty2) Tint
+| OltPtrPtr: forall ty1 ty2,
+    binop_type Olt (Tpointer ty1) (Tpointer ty2) Tint
+| OlePtrPtr: forall ty1 ty2,
+    binop_type Ole (Tpointer ty1) (Tpointer ty2) Tint
+| OgtPtrPtr: forall ty1 ty2,
+    binop_type Ogt (Tpointer ty1) (Tpointer ty2) Tint
+| OgePtrPtr: forall ty1 ty2,
+    binop_type Oge (Tpointer ty1) (Tpointer ty2) Tint.
+    
 
 Fixpoint expr_type (ex:expr)(e:env)(h:heap)(ty:type): Prop:=
   match ex with
@@ -552,7 +721,7 @@ Proof.
   induction e0; intros; destruct_expr_type; auto.
 Qed.
        
-Fixpoint wt_expr (ex:expr)(ty:type):=
+Fixpoint wt_expr (ex:expr)(ty:type): Prop:=
   match ex with
   | Econst_int i ty' => ty = ty'
   | Etempvar _ ty' => ty = ty'
@@ -564,11 +733,67 @@ Fixpoint wt_expr (ex:expr)(ty:type):=
                             
   end.
 
+Fixpoint wt_expr2 (e:env)(h:heap)(ex:expr): Prop:=
+  match ex with
+  | Econst_int i ty => ty = Tint
+  | Etempvar x ty => exists v, find e x = Some v /\ val_type h v ty   
+  | Ederef ex' ty => type_of_expr ex' =  (Tpointer ty) /\  wt_expr2 e h ex'
+  | Ebinop op ex1 ex2 ty => wt_expr2 e h ex1 /\
+                           wt_expr2 e h ex2 /\
+                           binop_type op (type_of_expr ex1) (type_of_expr ex2) ty 
+                            
+  end.
+
+Lemma expr_type_wt2_dec:
+  forall (ex : expr) (e : renv) (h : heap) ty,
+    expr_type ex e h ty -> wt_expr2 e h ex -> type_of_expr ex = ty.
+Proof.
+  induction ex; intros destruct_expr_type; auto; simpl.
+  - intros. destruct_and; subst; reflexivity.
+  - intros ? ? (?&?&?&?) (?&?); auto.
+  - intros ? ? (?&?) (?&?); auto.
+  - intros ? ? (?&?&?&?&?&?) ?; auto.
+Qed.
+  
+Lemma expr_type_wt:
+  forall (ex : expr) (e : renv) (h : heap) ty,
+    expr_type ex e h ty -> wt_expr ex ty.
+Proof.
+  induction ex; intros; destruct_expr_type; auto.
+  split; auto.
+  eapply IHex; eauto.
+  (*binop*) subst; do 2 eexists; split; eauto.
+Qed.
+
+Lemma expr_type_wt2:
+  forall (ex : expr) (e : renv) (h : heap) ty,
+    expr_type ex e h ty -> wt_expr2 e h ex.
+Proof.
+  induction ex; intros; destruct_expr_type; auto.
+  - subst; simpl; reflexivity.
+  - subst; simpl. exists x; split; auto.
+  - subst; simpl.
+    duplicate H.
+    eapply IHex in H.
+    subst; simpl; split; auto.
+    eapply expr_type_wt2_dec; eauto.
+  - subst; simpl.
+    split; [|split].
+    + eapply IHex1; eauto.
+    + eapply IHex2; eauto.
+    + replace (type_of_expr ex1) with x.
+      replace (type_of_expr ex2) with x0.
+      auto.
+      * symmetry; eapply expr_type_wt2_dec; eauto.
+      * symmetry; eapply expr_type_wt2_dec; eauto.
+Qed.
+
+(*
 Lemma eval_expr_type:
   forall (ex : expr) (e : renv) (h : heap) ty v,
     eval_expr ex e h v ->
     val_type h v ty ->
-    wt_expr ex ty -> 
+    wt_expr ex ty ->
     expr_type ex e h ty.
 Proof.
   induction ex; simpl; intros.
@@ -586,20 +811,158 @@ Proof.
       end.  
       simpl; rewrite H.
       destruct ty0; auto.
-  - (* destruct_eval_expr.
+  - destruct_eval_expr.
     destruct H1 as (ty1&ty2&?&?&?); subst.
     exists ty1, ty2.
     repeat split.
-    + eapply IHex1; eauto. *)
+    + eapply IHex1; eauto.
     admit.
 Admitted.
+ *)
 
+(* Eventually this should be 
+   "convertible" types      *)
+Lemma val_type_functional:
+forall h ty1 v ty2,
+  val_type h v ty1 ->
+  val_type h v ty2 ->
+  ty1 = ty2.
+Proof.
+  intros ? ?.
+  induction ty1; intros; destruct v; try solve[inversion H].
+  - destruct ty2; inversion H0; auto.
+  - destruct ty2; try solve[inversion H0]; auto.
+    f_equal.
+    assert ((exists v, h p = Some v) \/  ty1 = ty2).
+    {
+      destruct ty1; simpl in H; destruct (h p) as [v|] eqn:HP; try solve[inversion H];
+        try (left ; exists v; auto).
+      destruct ty2; simpl in H0; rewrite HP in H0; try solve[inversion H0];
+        try (right;auto).
+    }
+    destruct H1 as [[v HP]| ?]; auto.
+    eapply (IHty1 v); eauto.
+    + simpl in H. destruct ty1; rewrite HP in H; auto.
+    + simpl in H0. destruct ty2; rewrite HP in H0; auto.
+Qed.
+
+   (*
+Lemma eval_expr_type2:
+  forall (ex : expr) (e : renv) (h : heap) ty v,
+    eval_expr ex e h v ->
+    val_type h v ty ->
+    wt_expr2 e h  ex ->
+    expr_type ex e h ty.
+Proof.
+  induction ex; simpl; intros.
+  - destruct_eval_expr.
+    split; destruct ty0; inversion H0; auto.    
+  - destruct_eval_expr.
+    destruct H1 as [v' [? ?]].
+    rewrite H3 in H; inversion H; subst.
+    eexists; repeat split; eauto.
+    eapply val_type_functional; eauto.
+  - destruct_eval_expr.
+    destruct H4.
+    split.
+    + eapply IHex; eauto.
+      simpl.
+      inversion H1; subst.
+      destruct ty0; rewrite H4; auto.
+    + invert H1.
+      destruct ex; simpl in H0; invert H0;
+        try solve[inversion H4]; try solve[inversion H3].
+      * inversion H3; subst.
+      
+      
+    simpl in H4.
+    destruct H4.
+    split; auto.
+    eapply IHex; eauto.
+    + match goal with
+      | [ H: deref_loc _ _ _  |- _ ] => 
+        invert H
+      end.  
+      simpl; rewrite H.
+      destruct ty0; auto.
+  - destruct_eval_expr.
+    destruct H1 as (ty1&ty2&?&?&?); subst.
+    exists ty1, ty2.
+    repeat split.
+    + eapply IHex1; eauto.
+    admit.
+Admitted.
+    *)
+
+Lemma expr_type_eval:
+  forall ex e h v ty,
+    eval_expr ex e h v ->
+    expr_type ex e h (ty) ->
+    val_type h v ty.
+Proof.
+  induction ex;intros; try solve [do 2 destruct_eval_expr].
+  - do 2 destruct_eval_expr.
+    destruct_expr_type; subst.
+    simpl;trivial.
+  - do 2 destruct_eval_expr.
+    destruct_expr_type; subst.
+    subst_find.
+    auto.
+  - destruct_eval_expr.
+    destruct_expr_type; subst.
+    eapply IHex in H; eauto.
+    simpl in H.
+    invert H1.
+    destruct ty; rewrite H in H0; auto.
+  - (*binop*)
+    destruct_eval_expr.
+    destruct_expr_type; subst ty0.
+    specialize (IHex1 _ _ _ _ H5 H).
+    specialize (IHex2 _ _ _ _ H6 H0).
+    clear - H7 IHex1 IHex2 H1.
+
+    Lemma eval_binop_types:
+      forall (bo : binary_operation) (ty0 ty1 ty2 ty : type) 
+             (h : heap) (v v1 v2 : val),
+        eval_binop h ty0 bo v1 v2 = Some v ->
+        val_type h v1 ty1 ->
+        val_type h v2 ty2 ->
+        binop_type bo ty1 ty2 ty ->
+        val_type h v ty.
+    Proof.
+      intros.
+      invert H2.
+      - destruct v1; try solve[inversion H0].
+        destruct v2; try solve[inversion H1].
+        simpl in H.
+        destruct bo; inversion H; auto.
+      - destruct v1; try solve[inversion H0].
+        destruct v2; try solve[inversion H1].
+        destruct p; simpl in H. inversion H.
+        destruct ty0 eqn:HH; simpl.
+        simpl.
+        unfold eval_ptr_int_binop in H.
+    Admitted.
+
+    eapply eval_binop_types; eauto.
+Qed.
+
+(*
+(*Not needed anymore*)
 Lemma expr_type_eval_pointers:
   forall ex e h v ty ty0,
     eval_expr (Ederef ex ty0) e h v ->
     expr_type ex e h (Tpointer ty) ->
     val_type h v ty.
 Proof.
+  intros.
+  eapply expr_type_eval; eauto.
+  simpl; split; eauto.
+Admitted.
+*)
+(*
+  
+  
   induction ex;intros; try solve [do 2 destruct_eval_expr].
   - do 2 destruct_eval_expr.
     destruct_expr_type.
@@ -615,9 +978,11 @@ Proof.
     destruct ty0;  rewrite H in H2; auto.
   - (*binop*)
     destruct_eval_expr.
-    destruct_expr_type.
+    destruct_expr_type. subst ty.
+    
     admit.
 Admitted.
+*)
 
 Global Instance Proper_expr_type_expr: Proper (Logic.eq ==> env_equiv ==> Logic.eq ==>Logic.eq ==> Logic.iff) expr_type.
 Proof.
@@ -629,8 +994,14 @@ Proof.
   end.
   induction y; try (simpl; intros; try rewrite H0; first[ reflexivity| f_equiv; apply IHy]).
   (*binopo*)
-  - admit.
-Admitted.
+  - intros; split; intros (? & ? &? & ? & ? & ?); subst; simpl.
+    + do 2 eexists; repeat split; eauto.
+      eapply IHy1; eauto.
+      eapply IHy2; eauto.
+    + do 2 eexists; repeat split; eauto.
+      eapply IHy1; eauto.
+      eapply IHy2; eauto.
+Qed.
 
 Fixpoint gval_type (gv:gval)(gty:gtype):Prop:=
   match gv, gty with

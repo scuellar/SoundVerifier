@@ -1,4 +1,4 @@
-DIGEST 8c20249158531afc4885e3ed288ea76a
+DIGEST 2ffa8a2b15088cc87b3d70d4533614f8
 FVCC.Basics
 R15:33 compcert.lib.Coqlib <> <> lib
 R51:71 compcert.lib.Integers <> <> lib
@@ -84,14 +84,21 @@ R1304:1308 VCC.Basics <> gtype ind
 R1327:1330 Coq.Init.Logic <> :type_scope:x_'->'_x not
 R1331:1335 VCC.Basics <> gtype ind
 R1323:1326 VCC.Basics <> type ind
-ind 1349:1353 <> utype
-constr 1359:1360 <> RT
-constr 1379:1380 <> GT
-R1367:1370 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R1371:1375 VCC.Basics <> utype ind
-R1363:1366 VCC.Basics <> type ind
-R1388:1391 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R1392:1396 VCC.Basics <> utype ind
-R1383:1387 VCC.Basics <> gtype ind
-R1408:1409 VCC.Basics <> RT constr
-R1438:1439 VCC.Basics <> GT constr
+def 1350:1355 <> sizeof
+R1360:1363 VCC.Basics <> type ind
+R1367:1367 Coq.Numbers.BinNums <> Z ind
+R1379:1379 VCC.Basics <> t var
+R1390:1394 VCC.Basics <> Tvoid constr
+R1405:1408 VCC.Basics <> Tint constr
+R1443:1450 VCC.Basics <> Tpointer constr
+ind 1502:1506 <> utype
+constr 1512:1513 <> RT
+constr 1532:1533 <> GT
+R1520:1523 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1524:1528 VCC.Basics <> utype ind
+R1516:1519 VCC.Basics <> type ind
+R1541:1544 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1545:1549 VCC.Basics <> utype ind
+R1536:1540 VCC.Basics <> gtype ind
+R1561:1562 VCC.Basics <> RT constr
+R1591:1592 VCC.Basics <> GT constr

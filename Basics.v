@@ -53,6 +53,13 @@ Inductive gtype : Type :=
 | GTheap: gtype
 | GTpointer: type -> gtype.
 
+Definition sizeof (t:type): Z:=
+  match t with
+  | Tvoid => 1
+  | Tint => 4 (*only 32 int for now*)
+  | Tpointer _ => 4 (*hardcoded 32 for now*)
+  end.
+
 Inductive utype:= | RT: type -> utype | GT: gtype -> utype.
 Coercion RT : type >-> utype.
 Coercion GT : gtype >-> utype.
