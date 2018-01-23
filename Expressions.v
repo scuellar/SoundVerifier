@@ -93,8 +93,9 @@ Fixpoint free_vars_expr (e:gexpr): PositiveSet.t:=
   | GEbinop _ ex1 ex2 _ => union (free_vars_expr ex1) (free_vars_expr ex2)
   | _ => empty
   end.
-  
-Inductive deref_loc (h: heap) (adr: block * ptrofs) : val -> Prop :=
+
+(*This is just used to match CompCert's notation*)
+Inductive deref_loc (h: heap) (adr: address) : val -> Prop :=
   | deref_loc_value: forall v,
       h adr = Some v ->
       deref_loc h adr v.
@@ -298,7 +299,7 @@ Inductive eval_expr' (e:renv)(h:heap): expr -> val -> Prop :=
       eval_lvalue' e h a adr ->
       deref_loc h adr v ->
       eval_expr' e h a v
-with eval_lvalue' (e:renv) (h:heap): expr -> (block* ptrofs) -> Prop :=
+with eval_lvalue' (e:renv) (h:heap): expr -> (address) -> Prop :=
   | eval_Ederef: forall a adr ty,
       eval_expr' e h a (Vptr adr) ->
       eval_lvalue' e h (Ederef a ty) adr.
@@ -342,13 +343,13 @@ Inductive eval_gexpr' (e:renv)(h:heap)(ghe:genv):
 | geval_GEbinop: forall op ex1 ex2 v1 v2 v ty,
       eval_gexpr' e h ghe ex1 v1 ->
       eval_gexpr' e h ghe ex2 v2 ->
-      eval_ubinop h ty op v1 v2 = Some v ->
+      eval_ubinop h (type_of_gexpr ex1) op v1 v2 = Some v ->
       eval_gexpr' e h ghe (GEbinop op ex1 ex2 ty) v
 | eval_GElvalue: forall a adr v,
     eval_glvalue' e h ghe a adr ->
     deref_loc h adr v ->
       eval_gexpr' e h ghe a (RV v)
-with eval_glvalue' (e:renv)(h:heap)(ghe:genv): gexpr -> (block* ptrofs) -> Prop :=
+with eval_glvalue' (e:renv)(h:heap)(ghe:genv): gexpr -> (address) -> Prop :=
   | eval_GEderef: forall a adr ty,
       eval_gexpr' e h ghe a (RV (Vptr adr)) ->
       eval_glvalue' e h ghe  (GEderef a ty) adr
@@ -572,14 +573,14 @@ Lemma eval_expr_gexpr:
     eval_gexpr ex2 e h ghe v.
 Proof. intros. invert H1; econstructor; eauto. Qed.
 Lemma lvalue_glvalue:
-  forall (e : renv) (h : heap) (ghe : genv) (ex1 : expr) (addr : block * ptrofs)
+  forall (e : renv) (h : heap) (ghe : genv) (ex1 : expr) (addr : address)
     (H: eval_lvalue ex1 e h addr),
     eval_glvalue ex1 e h ghe addr.
 Proof. intros; invert H; econstructor; eauto. Qed.
 
 
 Lemma deref_loc_functional:
-  forall (adr0 : block * ptrofs) (h : heap) (v v' : val),
+  forall (adr0 : address) (h : heap) (v v' : val),
     deref_loc h adr0 v ->
     deref_loc h adr0 v' ->
     v = v'.
@@ -1035,4 +1036,10 @@ Fixpoint gexpr_type (gex:gexpr)(e:env)(rh:heap)(ghe:genv)(ty:utype): Prop:=
 
 Global Instance Proper_gexpr_type: forall gex, Proper (env_equiv ==> Logic.eq ==> env_equiv_gexpr gex ==> Logic.eq ==> Logic.iff) (gexpr_type gex).
 Proof.
-Admitted.
+  induction gex;
+    intros ? ? ? ? ? ? ? ? ? ? ? ?; subst;
+    destruct y2;
+    simpl; try rewrite H; repeat rewrite H1; try reflexivity; simpl.
+  apply singleton_spec; reflexivity.
+  apply singleton_spec; reflexivity.
+Qed.

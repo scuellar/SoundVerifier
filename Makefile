@@ -55,13 +55,13 @@ vo_to_obj = $(addsuffix .o,\
 ##########################
 
 COQLIBS?=\
-  -Q "../CompCert-3.0.1/" compcert\
+  -Q "../CompCert-3.2/" compcert\
   -R "." VCC
 COQCHKLIBS?=\
-  -R "../CompCert-3.0.1/" compcert\
+  -R "../CompCert-3.2/" compcert\
   -R "." VCC
 COQDOCLIBS?=\
-  -R "../CompCert-3.0.1/" compcert\
+  -R "../CompCert-3.2/" compcert\
   -R "." VCC
 
 ##########################
@@ -315,4 +315,3 @@ $(addsuffix .beautified,$(VFILES)): %.v.beautified:
 # Edit at your own risks !
 #
 # END OF WARNING
-

@@ -61,7 +61,7 @@ Fixpoint minimal_weakest_pre (stm:statement):assertion := (*weakest liberal prec
     ( assert_expr_defined ex2 /\
       assert_lvalue_defined ex1 /\
       let p:= fresh_var (free_vars_expr ex1) in
-      Aalloc p /\
+      (* Aalloc p /\ *) (*This seems useless*)
       Agexists p (Aref_eq ex1 (GEtempvar p (type_of_expr ex1)) )
      )%assert
   | Sseq x x0 => minimal_weakest_pre x
@@ -94,6 +94,11 @@ Fixpoint strongest_post_ghost (phi:assertion)(gstm:gstatement): assertion:=
   | GSseq stm1 stm2 => strongest_post_ghost (strongest_post_ghost phi stm1) stm2
   end.
 
+(*pointer is allocated*)
+Definition Aallocated (p:ident): assertion := 
+  let x:= fresh_var (singleton p) in
+  Agexists x (Aalloc p x).
+  
 Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
   match stm with
   | Sskip =>  phi
@@ -120,7 +125,7 @@ Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
                             (union (free_vars_expr ex1)
                                    (union (free_vars_expr ex2) (free_vars phi))))) in
     Agexists p
-             (Alloc p /\ 
+             (Aallocated p /\  
              (Agexists h_temp
                        (Aequal_heap h_temp /\
                         Aexists_heap
@@ -260,10 +265,22 @@ Proof.
       intros ?; solve_assertion.
     
   - (* Assign *)
-    intros ? ? ?.
+    intros ? ? ?; simpl.
     simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
-      intros ?; solve_assertion.
-      
+      intros ?; try solve[solve_assertion].
+    remember (fresh_var
+               (union
+                  (singleton
+                     (fresh_var
+                        (union (singleton (fresh_var (free_vars Q))) (free_vars Q))))
+                  (union (singleton (fresh_var (free_vars Q))) (free_vars Q)))) as X1.
+    remember (fresh_var
+          (union
+             (singleton
+                (fresh_var (union (singleton (fresh_var (free_vars P))) (free_vars P))))
+             (union (singleton (fresh_var (free_vars P))) (free_vars P)))) as X2.
+    rewrite H0.
+    simpl_find. reflexivity.
   - (*Sseq *)
     eapply IHs2, IHs1; eassumption.
 
@@ -660,9 +677,15 @@ Proof.
   - repeat (first [eexists | split]);
       gexpr_entailer.
     + simpl_find; reflexivity.
-    + instantiate (1:=addr); simpl.
-      clear cont_entailment.
-      apply upd_heap_gss.
+      
+    + simpl_find.
+      unfold upd_heap.
+      instantiate (2:=addr).
+      replace (add_eq addr addr) with true.
+      reflexivity.
+      symmetry.
+      eapply (add_deq_true addr addr); auto.
+    + apply upd_heap_gss.
     + simpl_find; reflexivity.
     + apply lvalue_glvalue; eauto.
     + apply eval_expr_gexpr; eauto.
@@ -811,10 +834,10 @@ Proof.
     destruct phi_OK as (?&?&?&?).
     destruct e0; try solve[inversion H1].
     (*For leval e0*)
-    simpl in H1, H3.
+    simpl in H1, H2.
     destruct H1 as (? &?&?&?).
-    destruct H3 as (? &?&?&?).
-    invert H3.
+    destruct H2 as (? &?&?).
+    invert H2.
     clear H cont_entailment.
     (*For eval_expr e1*)
     eapply expr_defined_safe in H0.
@@ -931,25 +954,3 @@ Section VerificationSafety.
   Qed.
 
 End VerificationSafety.
-
-(*Delete later:
-
-Inductive Safe': state -> Prop:=
-| Safe_Stop: forall e, Safe' (State Sskip Kstop e)
-| Safe_Step:
-    forall st st',
-      Safe' st' ->
-      step st st' ->
-      Safe' st.
-
-
-       (** * Examples *)
-
-       (*
-  "a" = 1
-  "b" = 2
-  \\ assert "a" == 1
-  \\ assert "b" == 2
-
- *)
- *)

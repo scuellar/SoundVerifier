@@ -65,16 +65,18 @@ Inductive assertion:=
 | Anot : assertion -> assertion
 | Aexists : ident -> assertion -> assertion
 | Agexists : ident -> assertion -> assertion
-| Adefined : ident -> assertion
-| Agdefined : ident -> assertion
-| Aalloc : ident -> assertion
+| Agvariable : ident -> uval -> assertion
+| Adefined : ident -> ident -> assertion
+| Agdefined : ident -> ident -> assertion
+| Aalloc : ident -> ident -> assertion
 | Aupdate_heap : ident -> ident -> ident -> assertion  (* UPD oldH pointer value newH *)
 | Aexists_heap : assertion -> assertion
 | Aequal_heap : ident -> assertion  (* UPD oldH pointer value newH *)
 | Aexpr_type : expr -> type -> assertion
 | Agexpr_type : gexpr -> utype -> assertion
 | Aref_eq: gexpr -> gexpr -> assertion
-| Aeq: gexpr -> gexpr -> assertion. (* x == 5 *)
+| Aeq: gexpr -> gexpr -> assertion
+| Abinop : binary_operation -> type -> ident -> ident -> ident -> assertion. (* x == 5 *)
 
 Bind Scope assert_scope with assertion.
 Delimit Scope assert_scope with assert.
@@ -99,11 +101,17 @@ Fixpoint eval_assert (P:assertion)(re:renv)(rh:heap)(ghe:genv): Prop:=
   | Agexists id P =>
     exists v,
     eval_assert P re rh (update_env ghe id v)
-  | Adefined id =>  ~ find re id = None
-  | Agdefined id =>  ~ find ghe id = None
-  | Aalloc p => exists adr,
+  | Agvariable x v => find ghe x = Some v  
+  | Adefined id x =>
+    find ghe x = (option_map RV (find re id))  /\
+    ~ find re id   = None
+  | Agdefined id x => 
+    find ghe id  = find ghe x  /\
+    ~ find ghe id = None
+  | Aalloc p x => exists adr,
     find ghe p = Some (RV (Vptr adr)) /\  
-    ~ rh adr = None
+    (option_map RV (rh adr)) = find ghe x /\
+    ~ rh adr = None              
   | (UPDATE p v h2)%assert =>
     exists p_ v_ h2_,
     find ghe p = Some (RV (Vptr p_)) /\
@@ -125,6 +133,12 @@ Fixpoint eval_assert (P:assertion)(re:renv)(rh:heap)(ghe:genv): Prop:=
     exists v,
     eval_glvalue ex1 re rh ghe v /\
     eval_gexpr ex2 re rh ghe (Vptr v)
+  | Abinop bo ty x1 x2 x3 =>
+    exists v1 v2 v3,
+    find ghe x1 = Some v1 /\
+    find ghe x2 = Some v2 /\
+    find ghe x3 = Some v3 /\
+    eval_ubinop rh ty bo v1 v2 = Some v3
   | Aeq ex1 ex2 =>
     exists v,
     eval_gexpr ex1 re rh ghe v /\
@@ -274,15 +288,17 @@ Section FreeFreshVars.
     | Anot A' => free_vars A'
     | Aexists id A' => (free_vars A')
     | Agexists x A' => PSet.remove x (free_vars A')
-    | Adefined id => empty
-    | Agdefined id => singleton id
-    | Aalloc p => singleton p
+    | Agvariable x v => singleton x
+    | Adefined _ x => singleton x
+    | Agdefined id x => union (singleton id) (singleton x)
+    | Aalloc p x => union (singleton p) (singleton x)
     | (UPDATE p v h2)%assert => union (singleton p) (union (singleton v) (singleton h2))
     | Aexists_heap A' => free_vars A'
     | Aequal_heap xh => singleton xh
     | Aexpr_type e _ => empty
     | Agexpr_type ex _ => free_vars_expr ex
     | Aref_eq ex1 ex2 => union (free_vars_expr ex1) (free_vars_expr ex2)
+    | Abinop _ _ x1 x2 x3 => union (singleton x1) (union (singleton x2) (singleton x3))
     | Aeq ex1 ex2 => union (free_vars_expr ex1) (free_vars_expr ex2)
     end.
 
@@ -346,11 +362,16 @@ Section FreeFreshVars.
         try do 2 rewrite gso by auto; auto.
       eapply H1. simpl.
       apply PSet.remove_spec; split; auto.
-    - try rewrite H; try rewrite H1; reflexivity.
-    - try rewrite H; try rewrite H1. reflexivity.
+    - try rewrite H; try rewrite H1; try reflexivity.
       apply singleton_spec; reflexivity.
-    - try rewrite H; try rewrite H1. reflexivity.
+    - try rewrite H; try rewrite H1; try reflexivity.
       apply singleton_spec; reflexivity.
+    - repeat rewrite H1; try reflexivity.
+      + apply PSet.union_spec; right; apply singleton_spec; reflexivity.
+      + apply PSet.union_spec; left; apply singleton_spec; reflexivity.
+    - repeat rewrite H1. reflexivity.
+      + apply PSet.union_spec; right; apply singleton_spec; reflexivity.
+      + apply PSet.union_spec; left; apply singleton_spec; reflexivity.
     - repeat (apply forall_exists_iff; intros).
       repeat rewrite H1; try reflexivity;
         clear; simpl;
@@ -375,6 +396,15 @@ Section FreeFreshVars.
       intros; f_equiv; rewrite H;
         try rewrite HH; try rewrite HH'; reflexivity.
 
+    -   (apply forall_exists_iff); intros.
+        (apply forall_exists_iff); intros.
+        repeat rewrite H1; try tauto.
+        + apply PSet.union_spec; right; apply PSet.union_spec; right;
+            apply singleton_spec; auto.
+        + apply PSet.union_spec; right; apply PSet.union_spec; left;
+            apply singleton_spec; auto.
+        + apply PSet.union_spec; left;
+            apply singleton_spec; auto.
   Qed.
 
   Lemma fresh_var_spec:
@@ -469,6 +499,10 @@ Ltac simpl_find :=
          | [  |- find _ _ = _ ] =>
            first [ rewrite gss | rewrite gso by solve_fresh_var_neq]
          | [ H: find _ _ = Some _  |- _ ] =>
+           first [ rewrite gss in H | rewrite gso in H by solve_fresh_var_neq]
+         | [  |- _ = find _ _ ] =>
+           first [ rewrite gss | rewrite gso by solve_fresh_var_neq]
+         | [ H: Some _ = find _ _  |- _ ] =>
            first [ rewrite gss in H | rewrite gso in H by solve_fresh_var_neq]
          end.
 

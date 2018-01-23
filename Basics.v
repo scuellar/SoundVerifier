@@ -1,37 +1,31 @@
 Require Import compcert.lib.Coqlib.
 Require Import compcert.lib.Integers.
 
-
 Require Import MSets.MSetPositive.
 Import PositiveSet. Module PSet:= PositiveSet. (*For positive-indexed sets*) 
 
 Require Import VCC.Heap.
 
-(** *(0 Variables *)
+
 (* Variables are represented as positives *)
 Definition ident := positive.
 
-(** * 1)Values *)
-(*The memory model has to be expanded on*)
-(*Blocks and ptrofs, should come from there*)
-Definition block:=positive.
-Definition ptrofs:=int.
+(** * Values *)
 
-
+(* Real Values*)
 Inductive val: Type :=
-| Vundef: val
-| Vint: int -> val
-| Vptr: (positive * Int.int) -> val.
+| Vundef: val                       (*Undefined*)
+| Vint: int -> val                   (*Unsigned integers*)
+| Vptr: (positive * Int.int) -> val. (*Pointers*)
                                  
 (* Ghost Values *)
-                                 
 Inductive gval: Type :=
 | GVptr: (positive * Int.int)  -> gval
 | GVnat: nat -> gval
 | GVbool: bool -> gval
 | GVheap: @heap val -> gval.
 
-(* Union values*)
+(* Values*)
 Inductive uval:= | RV: val -> uval | GV: gval -> uval.
 Coercion RV : val >-> uval.
 Coercion GV : gval >-> uval.
@@ -39,12 +33,13 @@ Notation heap:= (@heap val).
 
 Notation val_zero:= (Vint Int.zero).
 
-(** * 2) Types *)
+(** * Types *)
 
+(*Real Types*)
 Inductive type : Type :=
-| Tvoid: type                                            (* the void type *)
-| Tint: (*intsize -> signedness -> attr ->*) type               (* integer types *)
-| Tpointer: type -> type.
+| Tvoid: type                        (* oid type *)
+| Tint:  type                        (* Unsigned integer types *)
+| Tpointer: type -> type.             (* Pointer type *)
 
 (*Ghost Types*)
 Inductive gtype : Type :=
