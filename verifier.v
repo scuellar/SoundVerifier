@@ -23,13 +23,6 @@ Import Expressions.
 (** * Sintactic evaluator*)
 (* Evaluates a continuation and outputs the obligations necessary to verify the program*)
 Section Evaluator.
-  
-(*The follwing determine if an expression is true or false*)
-(*FIXEME: Resolve the missing cases (comparing pointers?) *)
-Definition bool_true (ex:expr):assertion:=
-  (~ Econst_int Int.zero Tint  == ex /\ Aexpr_type ex Tint)%assert.
-Definition bool_false (ex:expr):assertion:=
-  (Econst_int Int.zero Tint  == ex /\ Aexpr_type ex Tint)%assert.
 
 (*Minimal weakest pre is the minimal requirements to take a step. *)
 (*This is different to the weakes_pre that allows to continue execution.*)
@@ -48,7 +41,19 @@ Fixpoint minimal_weakest_pre_ghost (gstm:gstatement):assertion:=
   | GSseq x _ => minimal_weakest_pre_ghost x
   end.
 
-Fixpoint minimal_weakest_pre (stm:statement)(*Postcondition = True*) :assertion:= (*weakest liberal precondition*)
+Definition evaluates_to_bool (ex:expr): assertion :=
+  let x:= fresh_var (free_vars_expr ex) in
+     Agexists x 
+     (Agexpr_type (GEtempvar x Tint) Tint /\ (GEtempvar x Tint) == ex)%assert.
+
+(*The follwing determine if an expression is true or false*)
+(*FIXEME: Resolve the missing cases (comparing pointers?) *)
+Definition bool_true (ex:expr):assertion:=
+  (~ Econst_int Int.zero Tint  == ex /\ evaluates_to_bool ex)%assert.
+Definition bool_false (ex:expr):assertion:=
+  (Econst_int Int.zero Tint  == ex)%assert.
+
+Fixpoint minimal_weakest_pre (stm:statement):assertion := (*weakest liberal precondition*)
   match stm with
     Sskip => Atrue
   | Sset id ex => (assert_expr_defined ex)%assert
@@ -61,8 +66,8 @@ Fixpoint minimal_weakest_pre (stm:statement)(*Postcondition = True*) :assertion:
      )%assert
   | Sseq x x0 => minimal_weakest_pre x
   | Sifthenelse ex s1 s2 =>
-    (*Tint??!! should be bool?? *)
-    ((assert_expr_defined ex) /\ Aexpr_type ex Tint)%assert  
+    (assert_expr_defined ex /\
+     evaluates_to_bool ex)%assert  
   | Sloop  I1 I2  s1 s2 => I1
   | Sbreak => Atrue
   | Scontinue => Atrue
@@ -440,17 +445,15 @@ Qed.
 Lemma eval_expr_bool_spec:
   forall (ex:expr) e h ghe (v:val) b,
     eval_expr ex e h v ->
-    expr_type ex e h Tint ->
-    bool_val v (type_of_expr ex) = Some b ->
+    (*expr_type ex e h Tint -> *)
+    bool_val v = Some b ->
     [e, h, ghe]|= (if b then (bool_true ex) else (bool_false ex)) .
 Proof.
   intros; simpl in *.
-  destruct v; destruct (type_of_expr ex) eqn:HH; inversion H1.
-  destruct (Int.eq i Int.zero) eqn:Niz; simpl.
+  destruct v; inversion H0.
+  destruct (Int.eq i Int.zero) eqn:Niz.
   - apply int_eq_iff in Niz; subst.
-    split.
     + eexists; split; econstructor; eauto. econstructor.
-    + eauto.
   - split.
     + intros [v []].
       destruct_eval_gexpr;
@@ -474,7 +477,13 @@ Proof.
       cut (Vint i = val_zero).
       { intros HH0; injection HH0; auto. }
       { eapply deref_loc_functional; eauto. }
-    + auto. 
+    + (*Show that it evaluates to an int*)
+      exists (Some (RV (Vint i))); split.
+      * exists ((Vint i)); repeat split.
+        simpl_find; auto.
+      * exists ((Vint i)). split.
+        -- econstructor. simpl_find; reflexivity.
+        -- simpl_env_gexpr; constructor; auto.
 Qed. 
 
 Definition invariant (st:state):=
@@ -674,8 +683,8 @@ Lemma ifthenelse_preservation:
   forall e h ghe k ex v s1 s2 b,
     invariant (State (Sifthenelse ex s1 s2) k e h ghe) ->
     eval_expr ex e h v ->
-    expr_type ex e h Tint ->
-    bool_val v (type_of_expr ex) = Some b ->
+    (* expr_type ex e h Tint -> *)
+    bool_val v = Some b ->
     invariant (State (if b then s1 else s2) k e h ghe).
 Proof.
   intros until b;
@@ -686,7 +695,7 @@ Proof.
   - split; auto.
     destruct stm_entailments as [? HH];
       apply list_entailment_app in HH; destruct HH.
-    pose proof (eval_expr_bool_spec ex e h ghe _ _ EVALex BOOLval H);
+    pose proof (eval_expr_bool_spec ex e h ghe _ _ EVALex BOOLval);
       eauto.
   - simpl in stm_entailments.
     destruct stm_entailments as [? HH];
@@ -742,9 +751,11 @@ Proof.
     
   (*Conditional *)
   - eapply ifthenelse_preservation; eauto.
-    destruct_inv. eapply H0 in phi_OK; simpl in phi_OK.
+    (* destruct_inv. eapply H0 in phi_OK.
     destruct_and; auto.
-     
+    destruct phi_OK.
+    rename e into ex. *)
+      
   (*Loops *)
   - easy_invariant I1.
   - destruct H1; subst; easy_invariant I1.
@@ -821,10 +832,17 @@ Proof.
     eapply H in phi_OK as (expr_OK&IS_BOOL).
     eapply expr_defined_safe in expr_OK as (?&?).
 
-    simpl in IS_BOOL.
-    destruct (tint_is_bool _ _ _ _ IS_BOOL H2). 
+    (* simpl in IS_BOOL.
+    destruct (tint_is_bool _ _ _ _ IS_BOOL H2).  *)
+    destruct IS_BOOL as (ov & (v1 & ? & ?) & (v2 & ? & ?)).
+    simpl_find.
+    pose proof (eval_gexpr_functional _ _ _ _ _ x H6 ltac:(econstructor;assumption)); subst.
+    clear H6.
+    destruct_eval_gexpr; simpl_find.
+    inversion H2; subst.
+    destruct x; try solve[inversion H4].
     econstructor; try eassumption.
-    erewrite expr_type_type_of_expr; eauto.
+    simpl; reflexivity.
     
   - (* break *)
     simpl in *; destruct_and.

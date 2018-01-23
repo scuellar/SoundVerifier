@@ -10,7 +10,7 @@ Require Import Relation_Definitions.
 Require Import Coq.Classes.RelationClasses.
 
 
-(** * 8) Environment *)
+(*+ HEAP *)
 
 Section ParametricInVal.
   Context {val:Type}.
@@ -193,7 +193,6 @@ Proof.
     destruct_add_dec; auto.
   - rewrite heap_gro; auto.
 Qed.
-
 
 Lemma heap_redundant_update:
   forall e i v_ty v_ty',

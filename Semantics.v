@@ -72,13 +72,9 @@ Inductive state : Type :=
            state.
 
 (** * 11)Smallstep semantics *)
-Definition bool_val (v:val)(ty:type): option bool:=
-  match v,ty with
-  | Vint n, Tint =>
-    Some  (negb (Int.eq n Int.zero)) 
-  | _, _ => None
-  end.
 
+
+(*
 Lemma tint_is_bool:
   forall (e0 : expr) (e : renv) (h : heap) x,
     expr_type e0 e h Tint ->
@@ -99,8 +95,9 @@ Proof.
   + destruct_expr_type.
     destruct_eval_expr; simpl_find.
     subst ty.
-    admit. (* should be a property of eval_binop*)
+    admit. (* should be a property of eval_binop? *)
 Admitted.
+*)
 
 Inductive step: state -> state-> Prop:=
 | step_skip: forall e ghe h s c,
@@ -128,7 +125,7 @@ Inductive step: state -> state-> Prop:=
 (*Conditionals*)         
 | step_ifthenelse: forall e ghe h a v s1 s2 k b,
     eval_expr a e h v ->
-    bool_val v (type_of_expr a) = Some b ->
+    bool_val v = Some b ->
     step (State (Sifthenelse a s1 s2) k e h ghe)
          (State (if b then s1 else s2) k e h ghe)
          
@@ -202,7 +199,7 @@ Inductive safe_state:
                
 | safe_ifthenelse1: forall e ghe h a v s1 s2 k b,
     eval_expr a e h v ->
-    bool_val v  (type_of_expr a) = Some b ->
+    bool_val v = Some b ->
     safe_state (State (Sifthenelse a s1 s2) k e h ghe)
         
 | safe_steploop: forall  I1 I2 s1 s2 k e ghe h,

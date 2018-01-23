@@ -34,13 +34,24 @@ Definition option_uval_utype (rh:heap) (ov:option uval) (ty:utype): Prop:=
   | Some v => uval_type rh v ty
   | None => True 
   end.
-  
+
+Definition bool_val (v:val): option bool:=
+  match v with
+  | Vint n =>
+    Some  (negb (Int.eq n Int.zero)) 
+  | _ => None
+  end.
+
+(* Notice the compcert semantics uses the type 
+   of the val. In compcert it will look more like *)
+(*            
 Definition bool_val (v:val)(ty:type): option bool:=
   match v,ty with
-  | Vint n, Tint => 
+  | Vint n, Tint =>
     Some  (negb (Int.eq n Int.zero)) 
   | _, _ => None
   end.
+*)
 
 
 (** * 4) Assertions *)

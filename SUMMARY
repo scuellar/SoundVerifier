@@ -1,12 +1,11 @@
 Practical Multithreaded Verification Down to Bare Metal.
 
 This project aims to create a tool that proves correctness
-of annotated multithreaded C programs with respect to its execution
+of annotated multithreaded C programs with respect to their execution
 on real hardware (e.g. x86). Our approach is to create a fully
-verified toolchain by connecting a VCC-like verifier to a correct
-compiler like CompCert. The two short term goals of the summer
-wherem (1) to explore the feasability of a verifier with respect to
-the concurrent Clight semantics and (2) produce a minimal verifier,
-proven sound w.r.t the Clight semantics. The long term goal is to
-produce a practical verifier with the flexibility of VCC proved sound
-w.r.t the concurrent Clight semantics.
+verified toolchain by connecting a verified VCC-like verifier to
+a fully verified compiler, such as concurrent-CompCert. For the
+scope of the internship, I
+(1) produced a verifier for a portion of the C language,
+(2) gave it semantics compatible with CompCert's Clight and
+(3) produced a machine checked correctness proof of the verifier.

@@ -8,7 +8,6 @@ Require Import VCC.Expressions.
 
 (*+ Syntax *)
 
-
 Require Import VCC.Basics.
 Require Import VCC.Expressions.
 Require Import VCC.AssertionSemantics.

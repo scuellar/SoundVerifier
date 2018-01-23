@@ -280,8 +280,9 @@ Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
     end 
   | Vint _, Tint => True
   | _, _ => False
-  end.
+  end. 
 
+    
 Inductive eval_expr' (e:renv)(h:heap): expr -> val -> Prop :=
   | eval_Econst_int: forall i ty,
       eval_expr' e h (Econst_int i ty) (Vint i)
@@ -894,6 +895,7 @@ Proof.
 Admitted.
     *)
 
+(*
 Lemma expr_type_eval:
   forall ex e h v ty,
     eval_expr ex e h v ->
@@ -946,6 +948,7 @@ Proof.
 
     eapply eval_binop_types; eauto.
 Qed.
+*)
 
 (*
 (*Not needed anymore*)
@@ -1024,7 +1027,7 @@ Fixpoint gexpr_type (gex:gexpr)(e:env)(rh:heap)(ghe:genv)(ty:utype): Prop:=
   | RT ty', GEconst_ptr p _ => val_type rh (Vptr p) ty'
   | GT ty', GEconst_nat n _ => gval_type (GVnat n) ty'
   | GT ty', GEconst_bool b _ => gval_type (GVbool b) ty'
-  | GT ty', GEtempvar x _ => exists v, find ghe x = Some v /\
+  | _ , GEtempvar x _ => exists v, find ghe x = Some v /\
                                uval_type rh v ty
   | RT ty', GEderef ex' _ =>  gexpr_type ex' e rh ghe (GT (GTpointer ty'))
   | _, _ => False
