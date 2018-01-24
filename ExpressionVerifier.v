@@ -13,7 +13,7 @@ Require Import VCC.Expressions.
 Require Import VCC.Environment.
 Require Import VCC.Heap.
 Require Import VCC.Semantics.
-Require Import VCC.AssertionSemantics.
+Require Import VCC.Assertions.
 Import Expressions.
 
 (*An expressions is defined*)
@@ -26,8 +26,8 @@ Fixpoint assert_expr_eval (ex:expr)(x:ident): assertion:=
     let ty':= type_of_expr ex' in
     Agexists p ((GEtempvar p ty')== ex' /\ Aalloc p x)
   | Ebinop op ex1 ex2 ty =>
-    let x1:= fresh_var (union (free_vars_expr ex) (singleton x)) in
-    let x2:= fresh_var (union (union (free_vars_expr ex) (singleton x1)) (singleton x)) in
+    let x1:= fresh_var (union (free_vars_gexpr ex) (singleton x)) in
+    let x2:= fresh_var (union (union (free_vars_gexpr ex) (singleton x1)) (singleton x)) in
     Agexists x1
     (Agexists x2
     (assert_expr_eval ex1 x1 /\
@@ -52,12 +52,12 @@ Fixpoint assert_gexpr_eval (ex:gexpr)(x:ident): assertion:=
     ( Agvariable x (GVbool b))%assert 
   | GEtempvar id _ => Agdefined id x
   | GEderef ex' _ => 
-    let xp:= fresh_var (union (free_vars_expr ex')(singleton x) ) in
+    let xp:= fresh_var (union (free_vars_gexpr ex')(singleton x) ) in
     let ty':= type_of_gexpr ex' in
     (Agexists xp ((GEtempvar xp ty')== ex' /\ Aalloc xp x))%assert
   | GEbinop op ex1 ex2 ty =>
-    let x1:= fresh_var (union (free_vars_expr ex) (singleton x)) in
-    let x2:= fresh_var (union (union (free_vars_expr ex) (singleton x1)) (singleton x)) in
+    let x1:= fresh_var (union (free_vars_gexpr ex) (singleton x)) in
+    let x2:= fresh_var (union (union (free_vars_gexpr ex) (singleton x1)) (singleton x)) in
     Agexists x1
     (Agexists x2
     ( assert_gexpr_eval ex1 x1 /\
@@ -66,7 +66,7 @@ Fixpoint assert_gexpr_eval (ex:gexpr)(x:ident): assertion:=
   end.
 
 Definition assert_gexpr_defined (ex:gexpr): assertion :=
-  let x := fresh_var (free_vars_expr ex) in
+  let x := fresh_var (free_vars_gexpr ex) in
   Agexists x (assert_gexpr_eval ex x).
 
 Fixpoint assert_lvalue_defined (ex:expr): assertion:=
@@ -119,9 +119,9 @@ Proof.
     
   - (* binop *)
     destruct H as (v1  & v2 & H1 & H2 & ?).
-    remember (fresh_var (union (free_vars_expr (Ebinop bo ex1 ex2 ty)) (singleton id)))as x1.
+    remember (fresh_var (union (free_vars_gexpr (Ebinop bo ex1 ex2 ty)) (singleton id)))as x1.
     remember (fresh_var
-                  (union (union (free_vars_expr (Ebinop bo ex1 ex2 ty)) (singleton x1))
+                  (union (union (free_vars_gexpr (Ebinop bo ex1 ex2 ty)) (singleton x1))
                      (singleton id))) as x2.
     eapply IHex1 in H1.
     eapply IHex2 in H2.
@@ -195,7 +195,7 @@ Proof.
     + simpl in H2; rewrite H2.
       symmetry. eapply gso.
       intros ?.
-      eapply (fresh_var_spec (union (free_vars_expr ex) (singleton x))).
+      eapply (fresh_var_spec (union (free_vars_gexpr ex) (singleton x))).
       rewrite H4.
       eapply union_spec. right; eapply singleton_spec; auto. 
       
@@ -212,9 +212,9 @@ Proof.
     simpl in H5.
     exists v3''. split; auto.
     subst; simpl_env_gexpr.
-      remember (fresh_var (union (free_vars_expr (GEbinop bo ex1 ex2 ty)) (singleton x)))as x1.
+      remember (fresh_var (union (free_vars_gexpr (GEbinop bo ex1 ex2 ty)) (singleton x)))as x1.
       remember (fresh_var
-                  (union (union (free_vars_expr (GEbinop bo ex1 ex2 ty)) (singleton x1))
+                  (union (union (free_vars_gexpr (GEbinop bo ex1 ex2 ty)) (singleton x1))
                          (singleton x))) as x2.
       econstructor; eauto.
 Qed.

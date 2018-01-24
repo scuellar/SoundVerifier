@@ -22,5 +22,24 @@ Contains the following files:
   Language semantics.
 - ExpressionsVerifier.v
 - Verifier.v
-  Defines a function that computes the obligations requires to verify a program.
-  
+  Defines a function that computes the obligations requires to
+  verify a program.
+
+
+EXTERNAL DEPENDENCIES:
+
+This project has been built with:
+- Coq 8.6
+  https://coq.inria.fr/download
+- CompCert 2.7.2.
+  http://compcert.inria.fr/download.html
+
+HOW TO BUILD:
+
+1. Make sure both Coq 8.7.1 and CompCert 2.7 are installed.  
+2. CompCert should be in a folder next to the verifier.
+   If a different location different version is used,
+   modify the _CoqProject file to point to the correct
+   location.
+3. Execute this command:  make
+  (or, if you have a multicore computer,  make -j)

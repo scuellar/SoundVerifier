@@ -12,427 +12,408 @@ Require Import VCC.Basics. Import Basics.
 Require Import VCC.Expressions.
 Require Import VCC.Environment.
 Require Import VCC.Heap.
+Require Import VCC.Syntax.
 Require Import VCC.Semantics.
-Require Import VCC.AssertionSemantics.
+Require Import VCC.Assertions.
 Require Import VCC.ExpressionVerifier.
 Import Expressions.
 
+(** * Verifier*)
 
-
-
-(** * Sintactic evaluator*)
-(* Evaluates a continuation and outputs the obligations necessary to verify the program*)
 Section Evaluator.
 
-(*Minimal weakest pre is the minimal requirements to take a step. *)
-(*This is different to the weakes_pre that allows to continue execution.*)
-Fixpoint ghost_minimal_weakest_pre (gstm:gstatement)(*Postcondition = True*) :assertion:= (*weakest liberal precondition*)
-  match gstm with
-  | GSskip => Atrue
-  | GSset id ex => (assert_gexpr_defined ex)%assert
-  | GSseq gs1 _ => ghost_minimal_weakest_pre gs1
-  end.
+  (*Minimal weakest pre is the minimal requirements to take a step. *)
+  (*This is different to the weakes_pre that allows to continue execution.*)
 
-(*weakest liberal precondition*)
-Fixpoint minimal_weakest_pre_ghost (gstm:gstatement):assertion:=
-  match gstm with
-  | GSskip => Atrue
-  | GSset _ ex => (assert_gexpr_defined ex)%assert
-  | GSseq x _ => minimal_weakest_pre_ghost x
-  end.
+  (** Computes the Weakest Precondition for the first ghost expression in 
+      the ghost statement *)
+  Fixpoint first_gexpr_weakest_pre  (gstm:gstatement):assertion:=
+    match gstm with
+    | GSskip => Atrue
+    | GSset _ ex => (assert_gexpr_defined ex)%assert
+    | GSseq x _ => first_gexpr_weakest_pre x
+    end.
 
-Definition evaluates_to_bool (ex:expr): assertion :=
-  let x:= fresh_var (free_vars_expr ex) in
-     Agexists x 
-     (Agexpr_type (GEtempvar x Tint) Tint /\ (GEtempvar x Tint) == ex)%assert.
+  Definition evaluates_to_bool (ex:expr): assertion :=
+    let x:= fresh_var (free_vars_gexpr ex) in
+    Agexists x 
+             (Agexpr_type (GEtempvar x Tint) Tint /\ (GEtempvar x Tint) == ex)%assert.
 
-(*The follwing determine if an expression is true or false*)
-(*FIXEME: Resolve the missing cases (comparing pointers?) *)
-Definition bool_true (ex:expr):assertion:=
-  (~ Econst_int Int.zero Tint  == ex /\ evaluates_to_bool ex)%assert.
-Definition bool_false (ex:expr):assertion:=
-  (Econst_int Int.zero Tint  == ex)%assert.
+  (*The follwing determine if an expression is true or false*)
+  Definition bool_true (ex:expr):assertion:=
+    (~ Econst_int Int.zero Tint  == ex /\ evaluates_to_bool ex)%assert.
+  Definition bool_false (ex:expr):assertion:=
+    (Econst_int Int.zero Tint  == ex)%assert.
 
-Fixpoint minimal_weakest_pre (stm:statement):assertion := (*weakest liberal precondition*)
-  match stm with
-    Sskip => Atrue
-  | Sset id ex => (assert_expr_defined ex)%assert
-  | Sassign ex1 ex2 =>
-    ( assert_expr_defined ex2 /\
-      assert_lvalue_defined ex1 /\
-      let p:= fresh_var (free_vars_expr ex1) in
-      (* Aalloc p /\ *) (*This seems useless*)
-      Agexists p (Aref_eq ex1 (GEtempvar p (type_of_expr ex1)) )
-     )%assert
-  | Sseq x x0 => minimal_weakest_pre x
-  | Sifthenelse ex s1 s2 =>
-    (assert_expr_defined ex /\
-     evaluates_to_bool ex)%assert  
-  | Sloop  I1 I2  s1 s2 => I1
-  | Sbreak => Atrue
-  | Scontinue => Atrue
-  | Sghost gstm => minimal_weakest_pre_ghost gstm
-  | Sassert P => P
-  | Sassume P => Atrue
-  end.
+  (** Computes the Weakest Precondition for the first expression in 
+      the statement *)
+  Fixpoint first_expr_weakest_pre (stm:statement): assertion :=
+    match stm with
+      Sskip => Atrue
+    | Sset id ex => (assert_expr_defined ex)%assert
+    | Sassign ex1 ex2 =>
+      ( assert_expr_defined ex2 /\
+        assert_lvalue_defined ex1 /\
+        let p:= fresh_var (free_vars_gexpr ex1) in
+        (* Aalloc p /\ *) (*This seems useless*)
+        Agexists p (Aref_eq ex1 (GEtempvar p (type_of_expr ex1)) )
+      )%assert
+    | Sseq x x0 => first_expr_weakest_pre x
+    | Sifthenelse ex s1 s2 =>
+      (assert_expr_defined ex /\
+       evaluates_to_bool ex)%assert  
+    | Sloop  I1 I2  s1 s2 => I1
+    | Sbreak => Atrue
+    | Scontinue => Atrue
+    | Sghost gstm => first_gexpr_weakest_pre gstm
+    | Sassert P => P
+    | Sassume P => Atrue
+    end.
 
-Notation obligations:= (list (assertion * assertion)).
+  Notation obligations:= (list (assertion * assertion)).
 
-(* Equivalent to strongest_post *)
-Fixpoint strongest_post_ghost (phi:assertion)(gstm:gstatement): assertion:=
-  match gstm with
-  | GSskip => phi
-  | GSset x ex =>
-    let ty':=type_of_gexpr ex in
-    let temp:= fresh_var
-                 (union (free_vars phi)
-                        (union (free_vars_expr ex) (singleton x)))  in
-    Agexists temp
-             ((GEtempvar x ty' == GEtempvar temp ty') /\
-              (Agexists x ((GEtempvar temp ty' == ex) /\
-                           phi)))%assert
-  | GSseq stm1 stm2 => strongest_post_ghost (strongest_post_ghost phi stm1) stm2
-  end.
+  (* Computes the strongest postcondition for ghost statements. *)
+  Fixpoint strongest_post_ghost (phi:assertion)(gstm:gstatement): assertion:=
+    match gstm with
+    | GSskip => phi
+    | GSset x ex =>
+      let ty':=type_of_gexpr ex in
+      let temp:= fresh_var
+                   (union (free_vars phi)
+                          (union (free_vars_gexpr ex) (singleton x)))  in
+      Agexists temp
+               ((GEtempvar x ty' == GEtempvar temp ty') /\
+                (Agexists x ((GEtempvar temp ty' == ex) /\
+                             phi)))%assert
+    | GSseq stm1 stm2 => strongest_post_ghost (strongest_post_ghost phi stm1) stm2
+    end.
 
-(*pointer is allocated*)
-Definition Aallocated (p:ident): assertion := 
-  let x:= fresh_var (singleton p) in
-  Agexists x (Aalloc p x).
+  (*pointer is allocated*)
+  Definition Aallocated (p:ident): assertion := 
+    let x:= fresh_var (singleton p) in
+    Agexists x (Aalloc p x).
+
   
-Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
-  match stm with
-  | Sskip =>  phi
-  | Sset x ex => (* id = expr*)
-    (*Ex. temp. x=temp /\ Ex. x.  temp = e /\ P*)
-    let ty':=type_of_gexpr ex in
-    let temp:= fresh_var
-                 (union (free_vars phi)
-                        (union (free_vars_expr ex) (singleton x)))  in
-    Agexists temp
-             ((Etempvar x ty' == GEtempvar temp ty') /\
-              (Aexists x ((GEtempvar temp ty' == ex) /\
-                          phi)))%assert
-  | Sassign ex1 ex2 =>
-    let ty1:= type_of_expr ex1 in
-    let ty2:= type_of_expr ex2 in
-    let h_temp:= fresh_var (free_vars phi) in
-    let v:= fresh_var
-              (union (singleton h_temp)
-                     (union (free_vars_expr ex2) (free_vars phi))) in
-    let p:= fresh_var
-              (union (singleton v)
-                     (union (singleton h_temp)
-                            (union (free_vars_expr ex1)
-                                   (union (free_vars_expr ex2) (free_vars phi))))) in
-    Agexists p
-             (Aallocated p /\  
-             (Agexists h_temp
-                       (Aequal_heap h_temp /\
-                        Aexists_heap
-                          (Aref_eq ex1 (GEtempvar p ty1) /\
-                           Agexists v (GEtempvar v ty2 == ex2 /\
-                           (UPDATE p v h_temp /\ phi))))))%assert
-  | Sghost gstm => strongest_post_ghost phi gstm
-  | Sseq stm1 stm2 => strongest_post (strongest_post phi stm1) stm2
-  | Sifthenelse ex s1 s2 =>
-    (* (ex == true /\ evaluate s1) \/ (ex == false /\ evaluate s2) /\ phi*)
-    (* Equivalently*)
-    (* (ex == true -> evaluate s1) /\ (ex == false ->  evaluate s2) /\ phi*)
-    ( strongest_post (bool_true ex /\ phi) s1  \/ strongest_post (bool_false ex /\ phi) s2)%assert
-  | Sloop  I1 I2 s1 s2 => I2
-  | Sbreak => Afalse
-  | Scontinue => Afalse
-  | Sassert A => (Aand A phi)
-  | Sassume A => (Aand A phi)
-  end.
+  (* Computes the strongest postcondition for statements. *)
+  Fixpoint strongest_post (phi:assertion)(stm:statement): assertion:=
+    match stm with
+    | Sskip =>  phi
+    | Sset x ex => (* id = expr*)
+      (*Ex. temp. x=temp /\ Ex. x.  temp = e /\ P*)
+      let ty':=type_of_gexpr ex in
+      let temp:= fresh_var
+                   (union (free_vars phi)
+                          (union (free_vars_gexpr ex) (singleton x)))  in
+      Agexists temp
+               ((Etempvar x ty' == GEtempvar temp ty') /\
+                (Aexists x ((GEtempvar temp ty' == ex) /\
+                            phi)))%assert
+    | Sassign ex1 ex2 =>
+      let ty1:= type_of_expr ex1 in
+      let ty2:= type_of_expr ex2 in
+      let h_temp:= fresh_var (free_vars phi) in
+      let v:= fresh_var
+                (union (singleton h_temp)
+                       (union (free_vars_gexpr ex2) (free_vars phi))) in
+      let p:= fresh_var
+                (union (singleton v)
+                       (union (singleton h_temp)
+                              (union (free_vars_gexpr ex1)
+                                     (union (free_vars_gexpr ex2) (free_vars phi))))) in
+      Agexists p
+               (Aallocated p /\  
+                (Agexists h_temp
+                          (Aequal_heap h_temp /\
+                           Aexists_heap
+                             (Aref_eq ex1 (GEtempvar p ty1) /\
+                              Agexists v (GEtempvar v ty2 == ex2 /\
+                                          (UPDATE p v h_temp /\ phi))))))%assert
+    | Sghost gstm => strongest_post_ghost phi gstm
+    | Sseq stm1 stm2 => strongest_post (strongest_post phi stm1) stm2
+    | Sifthenelse ex s1 s2 =>
+      (* (ex == true /\ evaluate s1) \/ (ex == false /\ evaluate s2) /\ phi*)
+      (* Equivalently*)
+      (* (ex == true -> evaluate s1) /\ (ex == false ->  evaluate s2) /\ phi*)
+      ( strongest_post (bool_true ex /\ phi) s1  \/ strongest_post (bool_false ex /\ phi) s2)%assert
+    | Sloop  I1 I2 s1 s2 => I2
+    | Sbreak => Afalse
+    | Scontinue => Afalse
+    | Sassert A => (Aand A phi)
+    | Sassume A => (Aand A phi)
+    end.
 
-Fixpoint gstatement_obligations (phi:assertion)(gstm:gstatement): obligations:=
-  match gstm with
-  | GSskip => nil
-  | GSset x ex => (phi, minimal_weakest_pre_ghost gstm)::nil
-  | GSseq gstm1 gstm2 => gstatement_obligations phi gstm1 ++
-                        gstatement_obligations (strongest_post_ghost phi gstm1) gstm2
-end.
+  (* Liberal Weakest precondition for ghost statement*)
+  Fixpoint weakest_precondition_gstm (phi:assertion)(gstm:gstatement): obligations:=
+    match gstm with
+    | GSskip => nil
+    | GSset x ex => (phi, first_gexpr_weakest_pre gstm)::nil
+    | GSseq gstm1 gstm2 => weakest_precondition_gstm phi gstm1 ++
+                          weakest_precondition_gstm (strongest_post_ghost phi gstm1) gstm2
+    end.
 
-(* Equivalent to minimal_weakest_pre with True poscondition, 
-   Done for EACH point in the statement*)
-(*It's liberal because it doesn't require termineation*)
-(* I1 and I2 are the most recent loop invariants *)
-Fixpoint statement_obligations (phi:assertion)(stm:statement)(I: assertion * assertion): obligations:=
-match stm with
-| Sskip => nil
-| Sset id ex => (phi, minimal_weakest_pre stm)::nil
-| Sassign ex1 ex2 => (phi, minimal_weakest_pre stm)::nil
-| Sghost gstm => gstatement_obligations phi gstm
-| Sseq stm1 stm2 => statement_obligations phi stm1 I ++ statement_obligations (strongest_post phi stm1) stm2 I
-| Sifthenelse ex s1 s2 =>
-  (phi, minimal_weakest_pre stm)::(statement_obligations (bool_true ex /\ phi) s1) I ++
-                        (statement_obligations (bool_false ex /\ phi) s2 I)
-| Sloop I1 I2 s1 s2 => (phi, I1)::(strongest_post I1 s1, I1)::statement_obligations I1 s1 (I1,I2) ++
-                               (strongest_post I1 s2, I1)::statement_obligations I1 s2 (Afalse,I2)
-| Sbreak => (phi, snd I)::nil
-| Scontinue => (phi, fst I)::nil
-| Sassert A => (phi,A)::nil
-| Sassume _ => nil
-end.
+  (* Liberal Weakest precondition for statement*)
+  (*It's liberal because it doesn't require termineation*)
+  (* I1 and I2 are the most recent loop invariants *)
+  Fixpoint weakest_precondition_stm (phi:assertion)(stm:statement)(I: assertion * assertion): obligations:=
+    match stm with
+    | Sskip => nil
+    | Sset id ex => (phi, first_expr_weakest_pre stm)::nil
+    | Sassign ex1 ex2 => (phi, first_expr_weakest_pre stm)::nil
+    | Sghost gstm => weakest_precondition_gstm phi gstm
+    | Sseq stm1 stm2 => weakest_precondition_stm phi stm1 I ++ weakest_precondition_stm (strongest_post phi stm1) stm2 I
+    | Sifthenelse ex s1 s2 =>
+      (phi, first_expr_weakest_pre stm)::(weakest_precondition_stm (bool_true ex /\ phi) s1) I ++
+                                    (weakest_precondition_stm (bool_false ex /\ phi) s2 I)
+    | Sloop I1 I2 s1 s2 => (phi, I1)::(strongest_post I1 s1, I1)::weakest_precondition_stm I1 s1 (I1,I2) ++
+                                   (strongest_post I1 s2, I1)::weakest_precondition_stm I1 s2 (Afalse,I2)
+    | Sbreak => (phi, snd I)::nil
+    | Scontinue => (phi, fst I)::nil
+    | Sassert A => (phi,A)::nil
+    | Sassume _ => nil
+    end.
 
-(*  *)
-Fixpoint get_loop_invariants (k:cont): assertion * assertion:=
-  match k with
-  | Kstop => (Afalse, Afalse)
-  | Kseq stm k' => get_loop_invariants k'
-  | Kloop1 I1 I2 s1 s2 k => (I1, I2)
-  | Kloop2 I1 I2 s1 s2 k => (Afalse, I2) (* You can't continue in the second part of the loop *)
-  | GKseq gstm k' =>
-    (* A break cannot happen when executing ghost code *) 
-    (Afalse, Afalse) 
-  end.
+  Fixpoint get_loop_invariants (k:cont): assertion * assertion:=
+    match k with
+    | Kstop => (Afalse, Afalse)
+    | Kseq stm k' => get_loop_invariants k'
+    | Kloop1 I1 I2 s1 s2 k => (I1, I2)
+    | Kloop2 I1 I2 s1 s2 k => (Afalse, I2) (* You can't continue in the second part of the loop *)
+    | GKseq gstm k' =>
+      (* A break cannot happen when executing ghost code *) 
+      (Afalse, Afalse) 
+    end.
 
+  Fixpoint skip_to_loop (k:cont): cont:=
+    match k with
+    | Kstop => k
+    | Kloop1 _ _ _ _ _ => k
+    | Kloop2 _ _ _ _ _ => k
+    | Kseq _ k' => skip_to_loop k'
+    | GKseq _ k' => skip_to_loop k'
+    end.
 
-Fixpoint skip_to_loop (k:cont): cont:=
-  match k with
-  | Kstop => k
-  | Kloop1 _ _ _ _ _ => k
-  | Kloop2 _ _ _ _ _ => k
-  | Kseq _ k' => skip_to_loop k'
-  | GKseq _ k' => skip_to_loop k'
-  end.
+  Definition next_cont (stm:statement)(k:cont): cont:=
+    match stm with
+    | Sbreak | Scontinue => skip_to_loop k
+    | _ => k
+    end.
 
-Definition next_cont (stm:statement)(k:cont): cont:=
- match stm with
- | Sbreak | Scontinue => skip_to_loop k
- | _ => k
- end.
+  (* Liberal Weakest precondition for continuations *)
+  Fixpoint weakest_precondition_cont (phi:assertion)(k:cont) {struct k}: obligations :=
+    match k with
+    | Kstop => nil
+    | Kseq stm k' =>
+      weakest_precondition_stm phi stm (get_loop_invariants k) ++
+                            (weakest_precondition_cont (strongest_post phi stm ) k')
+    | Kloop1 I1 I2 s1 s2 k 
+    | Kloop2 I1 I2 s1 s2 k =>
+      (phi,I1)::(strongest_post I1 s1, I1)::weakest_precondition_stm I1 s1 (I1,I2)++
+              (strongest_post I1 s2, I1)::weakest_precondition_stm I1 s2 (Afalse,I2) ++ weakest_precondition_cont I2 k 
+    | GKseq gstm k' =>
+      weakest_precondition_gstm phi gstm ++
+                             (weakest_precondition_cont (strongest_post_ghost phi gstm) k')
+    end.
 
-Fixpoint continuation_obligations (phi:assertion)(k:cont) {struct k}: obligations :=
-  match k with
-  | Kstop => nil
-  | Kseq stm k' =>
-    statement_obligations phi stm (get_loop_invariants k) ++
-                          (continuation_obligations (strongest_post phi stm ) k')
-  | Kloop1 I1 I2 s1 s2 k 
-  | Kloop2 I1 I2 s1 s2 k =>
-    (phi,I1)::(strongest_post I1 s1, I1)::statement_obligations I1 s1 (I1,I2)++
-            (strongest_post I1 s2, I1)::statement_obligations I1 s2 (Afalse,I2) ++ continuation_obligations I2 k 
-  | GKseq gstm k' =>
-    gstatement_obligations phi gstm ++
-    (continuation_obligations (strongest_post_ghost phi gstm) k')
-  end.
-
-
-(* All the evaluator functions are monotonic over assertions. *)
-(* That is, a stronger precondition produces stronger obligations.*)
-Lemma forall_exists_if:
-  forall A (P Q: A -> Prop),
-    (forall x, P x -> Q x) -> (exists x, P x) -> (exists x, Q x).
-Proof. firstorder. Qed.
-Lemma forall_and_if:
-  forall (A A' B B': Prop),
-    (A -> A') -> (B -> B') -> (A /\ B) -> (A' /\ B').
-Proof. tauto. Qed.
-
-    Global Instance subrelation_env_equiv_assert:
-      forall ass, subrelation env_equiv (env_equiv_assert ass).
-    Proof. intros ? ? ?. apply env_equiv_equiv. Qed.
-    
-
-    
-Lemma eval_statement_ghost_weakening:
-  forall P Q, Q ||= P ->
-         forall s, strongest_post_ghost Q s ||= strongest_post_ghost P s.
+  Global Instance subrelation_env_equiv_assert:
+    forall ass, subrelation env_equiv (env_equiv_assert ass).
+  Proof. intros ? ? ?. apply env_equiv_equiv. Qed.
+  
+  (* All the evaluator functions are monotonic over assertions. *)
+  (* That is, a stronger precondition produces stronger obligations.*)
+  Lemma eval_statement_ghost_weakening:
+    forall P Q, Q ||= P ->
+           forall s, strongest_post_ghost Q s ||= strongest_post_ghost P s.
   Proof.
-  intros.
-  revert P Q H.
-  induction s; intros; auto; try entailer.
-  - intros ? ? ?.
-    simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
+    intros.
+    revert P Q H.
+    induction s; intros; auto; try entailer.
+    - intros ? ? ?.
+      simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
       intros ?; try solve_assertion.
-  - intros ? ? ?.
-    simpl. eapply IHs2, IHs1; assumption.
+    - intros ? ? ?.
+      simpl. eapply IHs2, IHs1; assumption.
   Qed.
-    
+  Lemma eval_statement_weakening:
+    forall P Q, Q ||= P ->
+           forall s, strongest_post Q s ||= strongest_post P s.
+  Proof.
+    intros.
+    revert P Q H.
+    induction s; intros; auto; try entailer.
+    - (* Set  *)
+      intros ? ? ?.
+      simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
+        intros ?; solve_assertion.
       
-Lemma eval_statement_weakening:
-  forall P Q, Q ||= P ->
-    forall s, strongest_post Q s ||= strongest_post P s.
-Proof.
-  intros.
-  revert P Q H.
-  induction s; intros; auto; try entailer.
-  - (* Set  *)
-    intros ? ? ?.
-    simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
-      intros ?; solve_assertion.
-    
-  - (* Assign *)
-    intros ? ? ?; simpl.
-    simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
-      intros ?; try solve[solve_assertion].
-    remember (fresh_var
-               (union
-                  (singleton
-                     (fresh_var
-                        (union (singleton (fresh_var (free_vars Q))) (free_vars Q))))
-                  (union (singleton (fresh_var (free_vars Q))) (free_vars Q)))) as X1.
-    remember (fresh_var
-          (union
-             (singleton
-                (fresh_var (union (singleton (fresh_var (free_vars P))) (free_vars P))))
-             (union (singleton (fresh_var (free_vars P))) (free_vars P)))) as X2.
-    rewrite H0.
-    simpl_find. reflexivity.
-  - (*Sseq *)
-    eapply IHs2, IHs1; eassumption.
+    - (* Assign *)
+      intros ? ? ?; simpl.
+      simpl; repeat (first [eapply forall_exists_if; intros ?| apply forall_and_if]);
+        intros ?; try solve[solve_assertion].
+      remember (fresh_var
+                  (union
+                     (singleton
+                        (fresh_var
+                           (union (singleton (fresh_var (free_vars Q))) (free_vars Q))))
+                     (union (singleton (fresh_var (free_vars Q))) (free_vars Q)))) as X1.
+      remember (fresh_var
+                  (union
+                     (singleton
+                        (fresh_var (union (singleton (fresh_var (free_vars P))) (free_vars P))))
+                     (union (singleton (fresh_var (free_vars P))) (free_vars P)))) as X2.
+      rewrite H0.
+      simpl_find. reflexivity.
+    - (*Sseq *)
+      eapply IHs2, IHs1; eassumption.
 
-  - (* ghost*)
-    apply eval_statement_ghost_weakening; assumption.
+    - (* ghost*)
+      apply eval_statement_ghost_weakening; assumption.
 
-  - (* ifthenelse *)
-    simpl; intros.
+    - (* ifthenelse *)
+      simpl; intros.
       specialize (IHs1 (bool_true e /\ P) (bool_true e /\ Q))%assert.
       specialize (IHs2 (bool_false e /\ P) (bool_false e /\ Q))%assert.
       assert (forall K:assertion, (K /\ Q) ||= (K /\ P))%assert by (intros K; entailer).
       specialize (IHs1 (H0 _)).
       specialize (IHs2 (H0 _)).
       entailer.
-Qed.
+  Qed.
 
-Lemma list_entailment_gstatement_weakening:
-  forall P Q,
-    Q ||= P ->
-    forall stm,
-      list_entailment (gstatement_obligations P stm) ->
-      list_entailment (gstatement_obligations Q stm).
-Proof.
-  intros P Q HH stm; revert P Q HH.
-  induction stm; auto; simpl;
-    try (intros; destruct_and; split; entailer).
+  Lemma list_entailment_gstatement_weakening:
+    forall P Q,
+      Q ||= P ->
+      forall stm,
+        list_entailment (weakest_precondition_gstm P stm) ->
+        list_entailment (weakest_precondition_gstm Q stm).
+  Proof.
+    intros P Q HH stm; revert P Q HH.
+    induction stm; auto; simpl;
+      try (intros; destruct_and; split; entailer).
 
-  simpl; intros P Q HH.
+    simpl; intros P Q HH.
     repeat rewrite list_entailment_app.
     apply forall_and_if; [apply IHstm1 | apply IHstm2]; auto.
     apply eval_statement_ghost_weakening; auto.
-Qed.
+  Qed.
   
-Lemma list_entailment_statement_weakening:
-  forall P Q,
-    Q ||= P ->
-    forall stm I,
-      list_entailment (statement_obligations P stm I) ->
-      list_entailment (statement_obligations Q stm I).
-Proof.
-  intros P Q HH k; revert P Q HH.
-  induction k; auto;
-    try (simpl; intros; split; entailer).
-  - simpl; intros P Q HH I.
-    repeat rewrite list_entailment_app.
-    apply forall_and_if; [apply IHk1 | apply IHk2]; auto.
-    apply eval_statement_weakening; auto.
+  Lemma list_entailment_statement_weakening:
+    forall P Q,
+      Q ||= P ->
+      forall stm I,
+        list_entailment (weakest_precondition_stm P stm I) ->
+        list_entailment (weakest_precondition_stm Q stm I).
+  Proof.
+    intros P Q HH k; revert P Q HH.
+    induction k; auto;
+      try (simpl; intros; split; entailer).
+    - simpl; intros P Q HH I.
+      repeat rewrite list_entailment_app.
+      apply forall_and_if; [apply IHk1 | apply IHk2]; auto.
+      apply eval_statement_weakening; auto.
 
-  - intros; eapply list_entailment_gstatement_weakening;
-    eassumption.
-    
-  - simpl; intros; split; try entailer.
-    destruct_and.
-    destruct_list_entailment.
-    reduce_list_entailment; first [eapply IHk1| eapply IHk2]; eauto;
-      entailer.
-Qed.
+    - intros; eapply list_entailment_gstatement_weakening;
+        eassumption.
+      
+    - simpl; intros; split; try entailer.
+      destruct_and.
+      destruct_list_entailment.
+      reduce_list_entailment; first [eapply IHk1| eapply IHk2]; eauto;
+        entailer.
+  Qed.
 
-Inductive cont_lt': cont -> cont -> Prop:=
-| Loop1_lt: forall P1 P2 s1 s2 k,
-    cont_lt' k (Kloop1 P1 P2 s1 s2 k)
-| Loop2_lt: forall P1 P2 s1 s2 k,
-    cont_lt' k (Kloop2 P1 P2 s1 s2 k)
-| seq_lt: forall s k,
-    cont_lt' k (Kseq s k).
+  Inductive cont_lt': cont -> cont -> Prop:=
+  | Loop1_lt: forall P1 P2 s1 s2 k,
+      cont_lt' k (Kloop1 P1 P2 s1 s2 k)
+  | Loop2_lt: forall P1 P2 s1 s2 k,
+      cont_lt' k (Kloop2 P1 P2 s1 s2 k)
+  | seq_lt: forall s k,
+      cont_lt' k (Kseq s k).
 
-Inductive cont_lt: cont -> cont -> Prop:=
-| cont_step: forall k k',
-    cont_lt' k k' ->
-    cont_lt k k'
-| cont_trans: forall k1 k2 k3,
-    cont_lt k1 k2 ->
-    cont_lt' k2 k3 ->
-    cont_lt k1 k3.
+  Inductive cont_lt: cont -> cont -> Prop:=
+  | cont_step: forall k k',
+      cont_lt' k k' ->
+      cont_lt k k'
+  | cont_trans: forall k1 k2 k3,
+      cont_lt k1 k2 ->
+      cont_lt' k2 k3 ->
+      cont_lt k1 k3.
 
 
-Lemma continuation_strong_ind:
-  forall P: cont -> Prop,
-    (forall k2, (forall k1, cont_lt k1 k2 -> P k1)  -> P k2) ->
-    forall k, P k.
-Proof.
-  intros P IH k.
-  cut (forall K0 k0 : cont, cont_lt k0 K0 -> P k0).
-  - intros HH. specialize (HH (Kseq Sskip k)).
-    apply HH; do 2 constructor.
-    
-  - remember (fun K0 => forall k0 : cont, cont_lt k0 K0 -> P k0) as PP. 
-    intros KK.
-    cut (PP KK); try solve[subst; auto].
-    induction KK.
-    + subst. intros.
-      inversion H; subst. inversion H0. inversion H1.
-    + subst.
-      assert (HH:=IHKK).
-      eapply IH in IHKK.
-      intros.
-      inversion H; subst; auto.
-      * inversion H0; subst.
-        eapply IH; eauto.
-      * inversion H1; subst.
-        eapply HH; auto.
-    + subst.
-      assert (HH:=IHKK).
-      eapply IH in IHKK.
-      intros.
-      inversion H; subst; auto.
-      * inversion H0; subst.
-        eapply IH; eauto.
-      * inversion H1; subst.
-        eapply HH; auto.
-    + subst.
-      assert (HH:=IHKK).
-      eapply IH in IHKK.
-      intros.
-      inversion H; subst; auto.
-      * inversion H0; subst.
-        eapply IH; eauto.
-      * inversion H1; subst.
-        eapply HH; auto.
-    +  subst.
-       assert (HH:=IHKK).
-       apply IH in IHKK.
-       intros.
-       inversion H; subst.
-       * inversion H0; subst.
-       * inversion H1; subst.      
-Qed.
-    
-Lemma list_entailment_weakening:
-  forall P Q,
-    Q ||= P ->
-    forall k,
-      list_entailment (continuation_obligations P k) ->
-      list_entailment (continuation_obligations Q k).
-Proof.
-  intros P Q HH k; revert P Q HH.
-  induction k; try (intros; entailer).
-  - simpl; intros ? ? ?;
-           repeat rewrite list_entailment_app; intros.
-    destruct_and.
-    split; try entailer.
-    eapply list_entailment_statement_weakening; eauto.
-    eapply eval_statement_weakening with (s:=s) in HH.
-    eapply IHk; eauto.
-  - simpl; intros ? ? ?;
-           repeat rewrite list_entailment_app; intros.
-    destruct_and.
-    split; try entailer.
-    eapply list_entailment_gstatement_weakening; eauto.
-    eapply eval_statement_ghost_weakening in HH.
-    eapply IHk; eauto.
-Qed.
+  Lemma continuation_strong_ind:
+    forall P: cont -> Prop,
+      (forall k2, (forall k1, cont_lt k1 k2 -> P k1)  -> P k2) ->
+      forall k, P k.
+  Proof.
+    intros P IH k.
+    cut (forall K0 k0 : cont, cont_lt k0 K0 -> P k0).
+    - intros HH. specialize (HH (Kseq Sskip k)).
+      apply HH; do 2 constructor.
+      
+    - remember (fun K0 => forall k0 : cont, cont_lt k0 K0 -> P k0) as PP. 
+      intros KK.
+      cut (PP KK); try solve[subst; auto].
+      induction KK.
+      + subst. intros.
+        inversion H; subst. inversion H0. inversion H1.
+      + subst.
+        assert (HH:=IHKK).
+        eapply IH in IHKK.
+        intros.
+        inversion H; subst; auto.
+        * inversion H0; subst.
+          eapply IH; eauto.
+        * inversion H1; subst.
+          eapply HH; auto.
+      + subst.
+        assert (HH:=IHKK).
+        eapply IH in IHKK.
+        intros.
+        inversion H; subst; auto.
+        * inversion H0; subst.
+          eapply IH; eauto.
+        * inversion H1; subst.
+          eapply HH; auto.
+      + subst.
+        assert (HH:=IHKK).
+        eapply IH in IHKK.
+        intros.
+        inversion H; subst; auto.
+        * inversion H0; subst.
+          eapply IH; eauto.
+        * inversion H1; subst.
+          eapply HH; auto.
+      +  subst.
+         assert (HH:=IHKK).
+         apply IH in IHKK.
+         intros.
+         inversion H; subst.
+         * inversion H0; subst.
+         * inversion H1; subst.      
+  Qed.
+  
+  Lemma list_entailment_weakening:
+    forall P Q,
+      Q ||= P ->
+      forall k,
+        list_entailment (weakest_precondition_cont P k) ->
+        list_entailment (weakest_precondition_cont Q k).
+  Proof.
+    intros P Q HH k; revert P Q HH.
+    induction k; try (intros; entailer).
+    - simpl; intros ? ? ?;
+                    repeat rewrite list_entailment_app; intros.
+      destruct_and.
+      split; try entailer.
+      eapply list_entailment_statement_weakening; eauto.
+      eapply eval_statement_weakening with (s:=s) in HH.
+      eapply IHk; eauto.
+    - simpl; intros ? ? ?;
+                    repeat rewrite list_entailment_app; intros.
+      destruct_and.
+      split; try entailer.
+      eapply list_entailment_gstatement_weakening; eauto.
+      eapply eval_statement_ghost_weakening in HH.
+      eapply IHk; eauto.
+  Qed.
 
 End Evaluator.
 
@@ -491,9 +472,9 @@ Proof.
       * assert (HH': (Vptr adr) = (Vptr adr0)) by (eapply eval_expr_functional; eauto).
         invert HH'.
         eapply int_neq_iff in Niz; apply Niz.
-      cut (Vint i = val_zero).
-      { intros HH0; injection HH0; auto. }
-      { eapply deref_loc_functional; eauto. }
+        cut (Vint i = val_zero).
+        { intros HH0; injection HH0; auto. }
+        { eapply deref_loc_functional; eauto. }
     + (*Show that it evaluates to an int*)
       exists (Some (RV (Vint i))); split.
       * exists ((Vint i)); repeat split.
@@ -508,13 +489,13 @@ Definition invariant (st:state):=
   | State stm k e h ghe =>
     exists phi,
     eval_assert phi e h ghe /\
-    list_entailment (statement_obligations phi stm (get_loop_invariants k))  /\
-    list_entailment (continuation_obligations (strongest_post phi stm) k)
+    list_entailment (weakest_precondition_stm phi stm (get_loop_invariants k))  /\
+    list_entailment (weakest_precondition_cont (strongest_post phi stm) k)
   | GState stm k e h ghe => 
     exists phi,
     eval_assert phi e h ghe /\
-    list_entailment (gstatement_obligations phi stm)  /\
-    list_entailment (continuation_obligations (strongest_post_ghost phi stm) k)
+    list_entailment (weakest_precondition_gstm phi stm)  /\
+    list_entailment (weakest_precondition_cont (strongest_post_ghost phi stm) k)
   end.
 
 (*Tactic for preservation of invariant *)
@@ -532,7 +513,7 @@ Ltac destruct_inv:=
   end.
 Ltac trivial_invariant:=
   destruct_inv; eexists;
-  cbn delta[continuation_obligations statement_obligations list_entailment] iota beta;
+  cbn delta[weakest_precondition_cont weakest_precondition_stm list_entailment] iota beta;
   try rewrite list_entailment_app;
   split; [|split]; eauto.
 
@@ -558,7 +539,7 @@ Lemma expr_equiv_tempvar:
   forall (x : ident) (ty : type) (v : option val) (temp : positive),
     temp <> x -> forall e : env, env_equiv_gexpr (Etempvar x) (update_env e temp v) e.
 Proof.
-  intros ? ? ? ? ? ? ?; cbv [free_vars_expr].
+  intros ? ? ? ? ? ? ?; cbv [free_vars_gexpr].
   rewrite PSet.singleton_spec; intros ?; subst x.
   rewrite gso; auto.
 Qed.
@@ -578,7 +559,7 @@ Ltac expr_entailer:=
     fail (* rewrite expr_equiv_tempvar by (first [assumption|symmetry; assumption])  *)
   | [  |- eval_expr ?ex ?e _ _ ] =>
     match goal with
-    | [ H: ~ PSet.In ?temp (free_vars_expr ex) |- _ ] =>
+    | [ H: ~ PSet.In ?temp (free_vars_gexpr ex) |- _ ] =>
       match e with
         context [update_env _ temp _] =>
         repeat (
@@ -598,36 +579,36 @@ Ltac gexpr_entailer:=
   try simpl_env_gexpr;
   first [
       solve 
-      [constructor; repeat expr_entailer] |
+        [constructor; repeat expr_entailer] |
       solve   [econstructor; simpl_find; auto] |
       idtac  ].
 
 
 (*Trying to depricate this. Might want to include parts of this in solve_assertions*)
 Ltac solve_assert:=
-        match goal with
-        | _ => assumption
-        | [  |- eval_assert ?P ?e _ ] =>
-          match goal with
-          | [ H: ~ PSet.In ?temp (free_vars P) |- _ ] =>
-            match e with
-              context [update_env _ temp _] =>
-              repeat (
-                  first[
-                      rewrite (update_comm _ temp) by (first [assumption|symmetry; assumption])|
-                      rewrite <- (update_comm _ _ temp) by  (first [assumption|symmetry; assumption])
-                    ]
-                ); rewrite free_vars_env_equiv_assert by exact H
-            end
-          end 
-        | [  |- eval_assert Atrue _ _] => constructor
-        | [  |- eval_assert (Aand _ _) _ _ ] => split
-        | [  |- eval_assert (Aor _ _) _ _ ] => first[solve[left; solve_assert] | solve[right; solve_assert]]
-        | [  |- eval_assert (Aexists _ _ _) _ _ ] => eexists; split
-        | [  |- eval_assert (Aeq _ _) _ _] => eexists; split; solve[repeat expr_entailer]
-        | _ => rewrite redundant_update
-        | _ => rewrite pointless_update by reflexivity 
-        end.
+  match goal with
+  | _ => assumption
+  | [  |- eval_assert ?P ?e _ ] =>
+    match goal with
+    | [ H: ~ PSet.In ?temp (free_vars P) |- _ ] =>
+      match e with
+        context [update_env _ temp _] =>
+        repeat (
+            first[
+                rewrite (update_comm _ temp) by (first [assumption|symmetry; assumption])|
+                rewrite <- (update_comm _ _ temp) by  (first [assumption|symmetry; assumption])
+              ]
+          ); rewrite free_vars_env_equiv_assert by exact H
+      end
+    end 
+  | [  |- eval_assert Atrue _ _] => constructor
+  | [  |- eval_assert (Aand _ _) _ _ ] => split
+  | [  |- eval_assert (Aor _ _) _ _ ] => first[solve[left; solve_assert] | solve[right; solve_assert]]
+  | [  |- eval_assert (Aexists _ _ _) _ _ ] => eexists; split
+  | [  |- eval_assert (Aeq _ _) _ _] => eexists; split; solve[repeat expr_entailer]
+  | _ => rewrite redundant_update
+  | _ => rewrite pointless_update by reflexivity 
+  end.
 
 
 Lemma set_preservation:
@@ -641,7 +622,7 @@ Proof.
   destruct_inv.
   pose proof (fresh_vars_spec_util phi x ex) as HH;
     destruct HH as [Fresh1 [Fresh2 Fresh3]].
-  remember (fresh_var (union (free_vars phi) (union (free_vars_expr ex) (singleton x))))
+  remember (fresh_var (union (free_vars phi) (union (free_vars_gexpr ex) (singleton x))))
     as temp.
   exists (strongest_post phi (Sset x ex)).
   (*This should be reformulated and maybe turn into lemma*)
@@ -764,7 +745,7 @@ Proof.
   inversion H; subst; try solve [trivial_invariant].
 
   - trivial_invariant;
-    eapply list_entailment_weakening; eauto; entailer.
+      eapply list_entailment_weakening; eauto; entailer.
   - trivial_invariant;
       eapply list_entailment_weakening; eauto; entailer.
   - eapply set_preservation; eauto.
@@ -774,11 +755,11 @@ Proof.
     
   (*Conditional *)
   - eapply ifthenelse_preservation; eauto.
-    (* destruct_inv. eapply H0 in phi_OK.
+  (* destruct_inv. eapply H0 in phi_OK.
     destruct_and; auto.
     destruct phi_OK.
     rename e into ex. *)
-      
+    
   (*Loops *)
   - easy_invariant I1.
   - destruct H1; subst; easy_invariant I1.
@@ -822,7 +803,7 @@ Proof.
     simpl in stm_entailment.
     destruct stm_entailment as [? _].
     eapply H in phi_OK.
-(*    cbv delta[eval_assert] iota zeta beta in phi_OK;
+    (*    cbv delta[eval_assert] iota zeta beta in phi_OK;
       destruct_and; fold eval_assert in H. *)
 
     eapply expr_defined_safe in phi_OK; destruct phi_OK.
@@ -848,7 +829,7 @@ Proof.
       repeat fold_eval_expr.
       eassumption.
     + eassumption.
-    
+      
   - (*Conditional*)
     simpl in stm_entailment.
     destruct_and; destruct_list_entailment.
@@ -925,14 +906,19 @@ Proof.
 Qed.
 
 Section VerificationSafety.
-  
+  (** The context contains the hypothesis of the theorem*)
+  (**
+       - program_verified: The verifier runs on program
+         verified_program and outputs program_obligations
+       - verifier_guaranty: All the obligations are satisfied
+  *)
   Context (verified_program: cont)
           (program_obligations: obligations)
-          ( Precondition: assertion)
-          (program_verified: continuation_obligations Atrue verified_program = program_obligations)
+          (program_verified: weakest_precondition_cont Atrue verified_program =
+                             program_obligations)
           (verifier_guaranty: list_entailment program_obligations).
   
-  
+  (* The invariant holds at the start of the execution. *)
   Lemma initial_invariant:
     invariant (State Sskip verified_program empty_env empty_heap empty_env).
   Proof.
@@ -941,9 +927,8 @@ Section VerificationSafety.
     rewrite program_verified.
     apply verifier_guaranty.
   Qed.
-  
-  
-  
+
+  (* The program executes safely. *)
   Theorem verifier_correctness:
     Safe (State Sskip verified_program empty_env empty_heap empty_env). 
   Proof.
