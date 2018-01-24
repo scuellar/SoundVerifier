@@ -1,4 +1,4 @@
-DIGEST 9632be3e2e7c90ab56f024f4c41b2a6c
+DIGEST 4a0e29108ee1b5d7352ed62868e3e300
 FVCC.Tactics
 R16:39 Coq.Logic.Classical_Prop <> <> lib
 R57:83 Coq.Classes.RelationClasses <> <> lib
@@ -26,3 +26,24 @@ R687:690 Coq.Init.Logic <> :type_scope:x_'/\'_x not
 R687:690 Coq.Init.Logic <> :type_scope:x_'/\'_x not
 R789:792 Coq.Init.Logic <> :type_scope:x_'/\'_x not
 R789:792 Coq.Init.Logic <> :type_scope:x_'/\'_x not
+prf 1376:1392 <> forall_exists_iff
+R1411:1414 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1410:1410 VCC.Tactics <> A var
+R1426:1426 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1448:1452 Coq.Init.Logic <> :type_scope:x_'->'_x not
+R1453:1453 Coq.Init.Logic <> :type_scope:x_'<->'_x not
+R1467:1473 Coq.Init.Logic <> :type_scope:x_'<->'_x not
+R1487:1487 Coq.Init.Logic <> :type_scope:x_'<->'_x not
+R1454:1460 Coq.Init.Logic <> :type_scope:'exists'_x_'..'_x_','_x not
+R1462:1463 Coq.Init.Logic <> :type_scope:'exists'_x_'..'_x_','_x not
+R1464:1464 VCC.Tactics <> P var
+R1466:1466 VCC.Tactics <> x var
+R1474:1480 Coq.Init.Logic <> :type_scope:'exists'_x_'..'_x_','_x not
+R1482:1483 Coq.Init.Logic <> :type_scope:'exists'_x_'..'_x_','_x not
+R1484:1484 VCC.Tactics <> Q var
+R1486:1486 VCC.Tactics <> x var
+R1440:1444 Coq.Init.Logic <> :type_scope:x_'<->'_x not
+R1437:1437 VCC.Tactics <> P var
+R1439:1439 VCC.Tactics <> x var
+R1445:1445 VCC.Tactics <> Q var
+R1447:1447 VCC.Tactics <> x var

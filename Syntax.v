@@ -2,23 +2,31 @@ Require Import compcert.lib.Coqlib.
 Require Import compcert.lib.Integers.
 
 Require Import MSets.MSetPositive.
-Import PositiveSet. Module PSet:= PositiveSet. (*For positive-indexed sets*)
+Import PositiveSet. Module PSet:= PositiveSet. (*For positive-indexed sets*) 
+Require Import Coq.Classes.Morphisms.
 
-Require Import VCC.Expressions.
-
-(*+ Syntax *)
-
+Require Import VCC.Tactics.
 Require Import VCC.Basics.
+Require Import VCC.Environment.
+Require Import VCC.Heap.
+Require Import VCC.Assertions.
 Require Import VCC.Expressions.
-Require Import VCC.AssertionSemantics.
+
 
 (** * 5) Statements *)
 
+Inductive gstatement: Type :=
+(*Ghost statements*)
+| GSskip : gstatement
+| GSset : ident -> gexpr -> gstatement                             (* x=i         *)
+| GSseq :   gstatement -> gstatement -> gstatement                         (* sequence    *).
+
 Inductive statement : Type :=
 | Sskip : statement                                                  (* do nothing  *)
-| Sset : ident -> type -> expr -> statement                             (* x=i         *) (*
-| Sassign : expr -> expr -> statement                                  (* x*=i         *) *)
+| Sset : ident -> expr -> statement                                    (* x=i         *)
+| Sassign : expr -> expr -> statement                                  (* x*=i         *)
 | Sseq :   statement -> statement -> statement                         (* sequence    *)
+| Sghost :   gstatement -> statement                                  (* sequence    *)
 | Sifthenelse : expr -> statement -> statement -> statement             (* conditional *)
 | Sloop: assertion ->  assertion ->  statement -> statement -> statement (* infinite loop *)
 | Sbreak : statement                                                 (* break statement *)
@@ -27,14 +35,38 @@ Inductive statement : Type :=
 | Sassume : assertion -> statement                                    (* assume P    *).
 
 
-
 (** The C loops are derived forms. *)
 
 Definition Swhile (inv:assertion) (e: expr) (s: statement) :=
-  Sloop inv (inv /\ expr_zero == e)%assert (Sseq (Sifthenelse e Sskip Sbreak) s) Sskip.
+  Sloop inv (inv /\ (Rexpr expr_zero) == (Rexpr e))%assert (Sseq (Sifthenelse e Sskip Sbreak) s) Sskip.
 
 Definition Sdowhile (inv:assertion)(s: statement) (e: expr) :=
-  Sloop inv (inv /\ expr_zero == e)%assert s (Sifthenelse e Sskip Sbreak).
+  Sloop inv (inv /\ Rexpr expr_zero == Rexpr e)%assert s (Sifthenelse e Sskip Sbreak).
 
 Definition Sfor (inv:assertion)(s1: statement) (e2: expr) (s3: statement) (s4: statement) :=
-  Sseq s1 (Sloop inv (inv /\ expr_zero == e2)%assert (Sseq (Sifthenelse e2 Sskip Sbreak) s3) s4).
+  Sseq s1 (Sloop inv (inv /\ Rexpr expr_zero == Rexpr e2)%assert (Sseq (Sifthenelse e2 Sskip Sbreak) s3) s4).
+
+
+(** * 6) Continuations*)
+Inductive cont: Type:=
+| Kstop
+| Kloop1: assertion -> assertion -> statement -> statement -> cont -> cont
+| Kloop2: assertion -> assertion -> statement -> statement -> cont -> cont 
+| Kseq: statement -> cont -> cont
+| GKseq: gstatement -> cont -> cont.
+
+(** * 10) State *)
+
+Inductive state : Type :=
+| State : statement ->
+          cont ->
+          renv ->
+          heap ->
+          genv ->
+          state
+| GState : gstatement ->
+           cont ->
+           renv ->
+           heap ->
+           genv ->
+           state.

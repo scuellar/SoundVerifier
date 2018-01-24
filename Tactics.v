@@ -45,3 +45,12 @@ Ltac invert HH:=
   revert_but HH;
   inversion HH; subst;
   intros.
+
+
+(** I find this lemma very useful. 
+    Particularly to prove Proper with iff.*)
+Lemma forall_exists_iff: forall A (P Q: A -> Prop),
+    (forall x, P x <-> Q x) -> (exists x, P x) <-> (exists x, Q x).
+Proof.
+  intros ? ? ? H1; split; intros [v H2]; eexists; eapply H1; eassumption.
+Qed.

@@ -16,12 +16,6 @@ Require Import VCC.Heap.
 Require Import VCC.Basics.
 Require Import VCC.Expressions.
 
-Lemma forall_exists_iff: forall A (P Q: A -> Prop),
-    (forall x, P x <-> Q x) -> (exists x, P x) <-> (exists x, Q x).
-Proof.
-  intros ? ? ? H1; split; intros [v H2]; eexists; eapply H1; eassumption.
-Qed.
-
 
 
 Definition option_val_type (rh:heap) (ov:option val) (ty:type): Prop:=
@@ -29,13 +23,11 @@ Definition option_val_type (rh:heap) (ov:option val) (ty:type): Prop:=
   | Some v => val_type rh v ty
   | None => True 
   end.
-
 Definition option_uval_utype (rh:heap) (ov:option uval) (ty:utype): Prop:=
   match ov with
   | Some v => uval_type rh v ty
   | None => True 
   end.
-
 Definition bool_val (v:val): option bool:=
   match v with
   | Vint n =>
@@ -43,15 +35,15 @@ Definition bool_val (v:val): option bool:=
   | _ => None
   end.
 
-(* Notice the compcert semantics uses the type 
-   of the val. In compcert it will look more like *)
-(*            
-Definition bool_val (v:val)(ty:type): option bool:=
-  match v,ty with
-  | Vint n, Tint =>
-    Some  (negb (Int.eq n Int.zero)) 
-  | _, _ => None
-  end.
+(** Notice the compcert semantics uses the type 
+    of the val. In compcert it will look more like
+            
+    Definition bool_val (v:val)(ty:type): option bool:=
+      match v,ty with
+       | Vint n, Tint =>
+         Some  (negb (Int.eq n Int.zero)) 
+       | _, _ => None
+      end.
 *)
 
 
@@ -59,25 +51,25 @@ Definition bool_val (v:val)(ty:type): option bool:=
 
 
 Inductive assertion:=
-| Atrue : assertion
-| Afalse : assertion
-| Aand : assertion -> assertion -> assertion
-| Aor : assertion -> assertion -> assertion
-| Anot : assertion -> assertion
-| Aexists : ident -> assertion -> assertion
-| Agexists : ident -> assertion -> assertion
-| Agvariable : ident -> uval -> assertion
-| Adefined : ident -> ident -> assertion
-| Agdefined : ident -> ident -> assertion
-| Aalloc : ident -> ident -> assertion
-| Aupdate_heap : ident -> ident -> ident -> assertion  (* UPD oldH pointer value newH *)
-| Aexists_heap : assertion -> assertion
-| Aequal_heap : ident -> assertion  (* UPD oldH pointer value newH *)
-| Aexpr_type : expr -> type -> assertion
-| Agexpr_type : gexpr -> utype -> assertion
-| Aref_eq: gexpr -> gexpr -> assertion
-| Aeq: gexpr -> gexpr -> assertion
-| Abinop : binary_operation -> type -> ident -> ident -> ident -> assertion. (* x == 5 *)
+| Atrue : assertion                         (* True    *)
+| Afalse : assertion                        (* False   *)
+| Aand : assertion -> assertion -> assertion  (* And P Q *)
+| Aor : assertion -> assertion -> assertion   (* Or P Q  *)
+| Anot : assertion -> assertion              (* Not P   *)
+| Aexists : ident -> assertion -> assertion   (* Exists x P   *)
+| Agexists : ident -> assertion -> assertion  (* GhostExists x P   *)
+| Agvariable : ident -> uval -> assertion     (* Variable evaluates to value*)
+| Adefined : ident -> ident -> assertion      (* Variables evaluate to the same *)
+| Agdefined : ident -> ident -> assertion     (* Ghost variables evaluate to the same *)
+| Aalloc : ident -> ident -> assertion        (* Valid ptr contains value *)
+| Aupdate_heap : ident -> ident -> ident -> assertion  (* old_heap[p/v]= new_heap *)
+| Aexists_heap : assertion -> assertion      (* HeapExists h P *)
+| Aequal_heap : ident -> assertion           (* heap x is equal to the current heap *)
+| Aexpr_type : expr -> type -> assertion      (* expression has type *)
+| Agexpr_type : gexpr -> utype -> assertion   (* GhostExpression has type *)
+| Aref_eq: gexpr -> gexpr -> assertion        (* LeftValue evaluates to expresion *)
+| Aeq: gexpr -> gexpr -> assertion            (* ex1 == ex2  *)
+| Abinop : binary_operation -> type -> ident -> ident -> ident -> assertion. (* a + b = c (with type ty)*)
 
 Bind Scope assert_scope with assertion.
 Delimit Scope assert_scope with assert.
@@ -90,6 +82,7 @@ Notation "'UPDATE'" := Aupdate_heap : assert_scope.
 Notation "'Alloc'" := Aalloc : assert_scope.
 Infix "==" := Aeq (right associativity, at level 65) : assert_scope.
 
+(*Predicate describing evaluation of assertions. *)
 Fixpoint eval_assert (P:assertion)(re:renv)(rh:heap)(ghe:genv): Prop:=
   match P with
   | Atrue => True
@@ -147,47 +140,17 @@ Fixpoint eval_assert (P:assertion)(re:renv)(rh:heap)(ghe:genv): Prop:=
   end.
 
 Notation "[ e , h , ghe ] |= P" :=  (eval_assert P e h ghe) (format "[ e ,  h ,  ghe ] |=  P", at level 9, right associativity).
-(*
-Global Instance Proper_eval_assert: Proper ( Logic.eq ==> env_equiv ==> Logic.eq ==> Logic.iff) eval_assert.
-Proof.
-  intros ? ? ? ? ? ? ? ? ?; subst.
-  revert x0 y0 H0 y1.
-  induction y;
-    try solve[intros; split;auto]; (*solves trivial*)
-    simpl; intros;
-      try solve[rewrite H0; reflexivity]; (*solves simple*)
-  try solve [repeat match goal with
-                    | [ H': ?pred _ _ , H: forall _ _, ?pred _ _ -> _ |- _ ] => specialize (H _ _ H')
-                    end; firstorder]. (*solves non quantifiers*)
-  - cut (forall v,
-            option_val_type v t0 /\ [ (update_env x0 i v), y1] |= y <->
-            option_val_type v t0 /\ [ (update_env y0 i v), y1] |= y).
-    { intros AA; split; intros [v [? BB]]; exists v; apply AA; auto. }
-    intros v.
-    rewrite IHy; [reflexivity|f_equiv; assumption].
-
-    (*
-  - cut (forall adr v,
-      (find x0 i = Some (Vptr adr) /\ (eval_expr e x0 y1 v /\ y1 adr = Some v)) <->
-      (find y0 i = Some (Vptr adr) /\ (eval_expr e y0 y1 v /\ y1 adr = Some v))).
-    { intros HH; split; intros [adr [? [v ?]]];
-        do 2 econstructor; try eexists; rewrite H0 in *; eauto.  }
-    intros; split; intros; repeat rewrite H0 in *; assumption.
-    *)
-  - split; intros [v []]; do 2 econstructor;
-      rewrite H0 in *; eassumption.
-Qed.
-*)
 
 (* Obligations are formulas of the form phi ||= phi', which are passed to the SMT to verify. *)
 (* The semantics of obligations is given by entailments *)
-
 Notation obligations:= (list (assertion * assertion)).
+
 Definition assert_entails P Q:=
   forall (e:renv) (h: heap)(ghe:genv), [e, h, ghe] |= P -> [e, h, ghe] |= Q.
 Notation "P ||= Q" :=  (assert_entails P Q) (at level 20, right associativity).
 Definition assertion_entailment (entailment:assertion * assertion): Prop :=
   let (P,Q):= entailment in P ||= Q.
+
 
 (*A verified list of obligations is defined thusly: *)
 Fixpoint list_entailment (entailments: list (assertion * assertion)): Prop :=
@@ -195,6 +158,7 @@ Fixpoint list_entailment (entailments: list (assertion * assertion)): Prop :=
     nil => True
   | ent::ents => assertion_entailment ent /\ list_entailment ents
   end.
+
 Lemma list_entailment_app:
   forall ls1 ls2,
     list_entailment (ls1 ++ ls2) <->
@@ -209,7 +173,9 @@ Proof.
     apply IHls1; auto.
 Qed.
 
-(** *Tactics *)
+(** *Tactics For entailments *)
+
+(*Tactic: destruct a list of entailments *)
 Ltac destruct_list_entailment:=
   repeat match goal with
          | [ H: list_entailment (_ :: _)  |- _ ] =>
@@ -224,6 +190,13 @@ Ltac reduce_list_entailment:=
          | [ |- list_entailment (_ ++ _) ] =>
            rewrite list_entailment_app; split
          end.
+
+
+(** *Entailer *)
+
+(* This a simple entailer that solves assertion and
+   entailments. It is by no means complete, but works 
+   pretty well with simple implications. *)
 
 Ltac pre_entailer:=
   match goal with
@@ -274,7 +247,6 @@ Section FreeFreshVars.
            [rewrite union_spec in HH |
             rewrite singleton_spec in HH];
     normal_form_not_or.
-
   (* Simplify goal of the form [~ In x s] *)
   Ltac reduce_in_set:=
     repeat first[ rewrite union_spec;
@@ -297,10 +269,10 @@ Section FreeFreshVars.
     | Aexists_heap A' => free_vars A'
     | Aequal_heap xh => singleton xh
     | Aexpr_type e _ => empty
-    | Agexpr_type ex _ => free_vars_expr ex
-    | Aref_eq ex1 ex2 => union (free_vars_expr ex1) (free_vars_expr ex2)
+    | Agexpr_type ex _ => free_vars_gexpr ex
+    | Aref_eq ex1 ex2 => union (free_vars_gexpr ex1) (free_vars_gexpr ex2)
     | Abinop _ _ x1 x2 x3 => union (singleton x1) (union (singleton x2) (singleton x3))
-    | Aeq ex1 ex2 => union (free_vars_expr ex1) (free_vars_expr ex2)
+    | Aeq ex1 ex2 => union (free_vars_gexpr ex1) (free_vars_gexpr ex2)
     end.
 
   Definition env_equiv_assert (P:assertion): relation genv:=
@@ -430,13 +402,13 @@ Section FreeFreshVars.
     forall phi x ex,
       let temp:=
           fresh_var (union (free_vars phi)
-                           (union (free_vars_expr ex) (singleton x)))  in
+                           (union (free_vars_gexpr ex) (singleton x)))  in
       ~ PSet.In temp (free_vars phi) /\
-      ~ PSet.In temp (free_vars_expr ex) /\
+      ~ PSet.In temp (free_vars_gexpr ex) /\
       temp <> x.
   Proof.
     intros.
-    pose proof (fresh_var_spec (union (free_vars phi) (union (free_vars_expr ex) (singleton x)))). 
+    pose proof (fresh_var_spec (union (free_vars phi) (union (free_vars_gexpr ex) (singleton x)))). 
     do 2 rewrite PSet.union_spec in H.
     apply Classical_Prop.not_or_and in H; destruct H as [A H].
     apply Classical_Prop.not_or_and in H; destruct H as [B C].
@@ -448,7 +420,7 @@ Section FreeFreshVars.
 
   Lemma expr_type_update:
     forall k gex,
-      ~ PSet.In k (free_vars_expr gex) -> 
+      ~ PSet.In k (free_vars_gexpr gex) -> 
       forall e h ghe ty v_ty, gexpr_type gex e h (update_env ghe k v_ty) ty <->
                          gexpr_type gex e h ghe ty.
   Proof.
@@ -457,7 +429,7 @@ Section FreeFreshVars.
 
   Lemma eval_expr_update:
     forall k gex,
-      ~ PSet.In k (free_vars_expr gex) -> 
+      ~ PSet.In k (free_vars_gexpr gex) -> 
       forall e h ghe v v', 
         eval_gexpr gex e h (update_env ghe k v') v <->
         eval_gexpr gex e h ghe v.
@@ -569,7 +541,7 @@ Ltac simpl_free_vars_env_equiv_assert_hyp H:=
                      rewrite redundant_update in H |
                      rewrite pointless_update in H by reflexivity]).
 
-(** * Some tactics (worth moving some) *)
+(** * Some More Tactics *)
 Ltac simpl_env_assertion:=
   repeat match goal with
          | [  |- eval_assert _ _ _ _ ] =>
