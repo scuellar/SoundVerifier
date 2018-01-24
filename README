@@ -1,0 +1,26 @@
+SoundVerifier by Santiago Cuellar at Amazon.
+
+Contains the following files:
+
+- Tactics.v
+  Some useful tactics for verification.
+- Heap.v
+  Defines a heap and it's lemmas.
+- Environment.v
+  Defines an environment and it's lemmas.
+- Basics.v
+  Defines values and types.
+- FreshVars.v
+  Computes a fresh variable from a set of used variables.
+- Expressions.v
+  Syntax and semantics of expressions.
+- Assertions.v
+  Syntax and semantics of the assertion language.
+- Syntax.v
+  Defines statements, continuations and state.
+- Semantics.v
+  Language semantics.
+- ExpressionsVerifier.v
+- Verifier.v
+  Defines a function that computes the obligations requires to verify a program.
+  
