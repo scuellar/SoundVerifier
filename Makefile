@@ -115,7 +115,7 @@ VFILES:=Tactics.v\
   Semantics.v\
   Syntax.v\
   ExpressionVerifier.v\
-  Verifier.v\
+  VerifierProgram.v\
   VerifierSoundness.v\
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
