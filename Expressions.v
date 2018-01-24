@@ -18,10 +18,6 @@ Require Import Coq.Logic.Classical_Prop.
 
 Notation heap:=(@ heap val).
 
-
-(** *Operations*)
-
-(*Binary operations*)
 Inductive binary_operation : Type :=
   | Oadd : binary_operation             (** addition (binary [+]) *)
   | Osub : binary_operation             (** subtraction (binary [-]) *)
@@ -38,12 +34,9 @@ Inductive binary_operation : Type :=
   | Ole: binary_operation               (** comparison ([<=]) *)
   | Oge: binary_operation.              (** comparison ([>=]) *)
 
-
-(*
-Definition sem_binary_operation ge op v1 (typeof a1) v2 (typeof a2)
-*)
-
 (** * Expressions *)
+
+(*Real expression*)
 Inductive expr : Type :=
   | Econst_int ( i: int) (ty: type) (* integer constant*)
   | Etempvar (id: ident) (ty: type)  (**r constant *)
@@ -82,19 +75,19 @@ Definition type_of_gexpr (ex:gexpr):=
   end.
 Coercion Rexpr: expr >-> gexpr.
 
-(*Free GHOST variables of a GHOST expression*)
+(* Free GHOST variables of a GHOST expression*)
 (* Very important to notice that program variables don't count.*)
 (* the reason is that this is used by the verifier to get FRESH vars.*)
 (* The verifier can only create ghost variables. *)
-Fixpoint free_vars_expr (e:gexpr): PositiveSet.t:=
+Fixpoint free_vars_gexpr (e:gexpr): PositiveSet.t:=
   match e with
   | GEtempvar id _ => singleton id
-  | GEderef ex _ => free_vars_expr ex
-  | GEbinop _ ex1 ex2 _ => union (free_vars_expr ex1) (free_vars_expr ex2)
+  | GEderef ex _ => free_vars_gexpr ex
+  | GEbinop _ ex1 ex2 _ => union (free_vars_gexpr ex1) (free_vars_gexpr ex2)
   | _ => empty
   end.
 
-(*This is just used to match CompCert's notation*)
+(*This is just used to match CompCert's notation for dereferences*)
 Inductive deref_loc (h: heap) (adr: address) : val -> Prop :=
   | deref_loc_value: forall v,
       h adr = Some v ->
@@ -170,49 +163,56 @@ Definition valid_ptr (h:Basics.heap) b ofs: bool :=
   | Some _ => true
   end.
 
+(** C allows pointers one past the last element of an array.  These are not
+  valid according to the previously defined [valid_pointer]. The property
+  [weak_valid_pointer m b ofs] holds if address [b, ofs] is a valid pointer
+  in [m], or a pointer one past a valid block in [m].  *)
+Definition weak_valid_pointer (m: heap) (b: positive) (ofs: int) :=
+  valid_ptr m b ofs || valid_ptr m b (Int.sub ofs Int.one).
+
 Definition eval_ptr_ptr_binop (m:Basics.heap)(op:binary_operation) (p1 p2:positive*int):
   option bool:=
   let (b1,ofs1):= p1 in
   let (b2,ofs2):= p2 in
   match op with
   | Oeq =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some (Int.eq ofs1 ofs2)
       else Some false
     else None 
   | One =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some (negb (Int.eq ofs1 ofs2))
       else Some true
     else None 
   | Olt =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some  (Int.lt ofs1 ofs2)
       else None
     else None 
   | Ogt =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some (negb (Int.lt ofs1 ofs2))
       else None
     else None
   | Ole =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some (negb (Int.lt ofs2 ofs1))
       else None
     else None  
   | Oge =>
-    if (valid_ptr m b1 ofs1 &&
-        valid_ptr m b2 ofs2) then
+    if (weak_valid_pointer m b1 ofs1 &&
+        weak_valid_pointer m b2 ofs2) then
       if eq_block b1 b2 then
         Some (Int.lt ofs2 ofs1)
       else None
@@ -233,7 +233,7 @@ Definition eval_binop (h:heap) (ty:type) (op:binary_operation) (v1:val)(v2:val):
   | _, _ => None 
   end.
 
-(*pure ghost binary operations*)
+(*Pure ghost binary operations*)
 Definition eval_gbinop (h:heap) (ty:type) (op:binary_operation)(v1:gval)(v2:gval): option gval:=
   match v1, v2 with
   | GVptr p1, GVptr p2 =>
@@ -263,14 +263,6 @@ Definition eval_ubinop (h:heap) (ty:type) (op:binary_operation)(v1:uval)(v2:uval
 
 (** * Evaluating expression  *)
 
-(* Inductive eval_ubinop:  binary_operation -> uval -> uval -> uval -> Prop:=
-| eval_Rbinop: forall op v1 v2 v,
-    eval_binop op v1 v2 v ->
-    eval_ubinop op v1 v2 v
-| eval_Gbinop: forall op v1 v2 v,
-    eval_gbinop op v1 v2 v ->
-    eval_ubinop op v1 v2 v. *)
-
 Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
   match v, ty with
   | Vptr p, Tpointer ty' =>
@@ -282,7 +274,6 @@ Fixpoint val_type (h:heap)(v:val)(ty:type):Prop:=
   | Vint _, Tint => True
   | _, _ => False
   end. 
-
     
 Inductive eval_expr' (e:renv)(h:heap): expr -> val -> Prop :=
   | eval_Econst_int: forall i ty,
@@ -309,7 +300,7 @@ Definition eval_lvalue ex (e:renv)(h:heap):= eval_lvalue' e h ex.
 
 Definition env_equiv_gexpr ex : relation genv:=
   fun e1 e2 =>
-    forall x, PSet.In x (free_vars_expr ex) ->
+    forall x, PSet.In x (free_vars_gexpr ex) ->
          (find e1 x) = (find e2 x).
 
 Global Instance Equivalenc_env_equiv_expr: forall ex, Equivalence (env_equiv_gexpr ex).
@@ -377,7 +368,7 @@ Proof. intros ? ? ? H ? ?; apply H. Qed.
 
 Lemma free_vars_env_equiv:
   forall ex k e,
-    ~ PSet.In k (free_vars_expr ex) ->
+    ~ PSet.In k (free_vars_gexpr ex) ->
       forall ov,
         env_equiv_gexpr ex (update_env e k ov) e.
 Proof.
@@ -387,7 +378,7 @@ Proof.
     rewrite gso; auto.
 Qed.
 
-
+(* Tactic: turns eval_expr' into eval_expr *)
 Ltac fold_eval_expr:=
   match goal with
     | [  |- context[eval_expr' ?e ?h ?ex ?v] ] =>
@@ -402,7 +393,11 @@ Ltac fold_eval_expr:=
     | [ H: context[eval_lvalue' ?e ?h ?ex ?b ?ofs]  |-  _ ] =>
       progress replace (eval_lvalue' e h ex b ofs) with (eval_lvalue ex e h b ofs) in H
                                                         by reflexivity
-    end.
+  end.
+
+(** Tactic: Easy case analysis over eval_expr. 
+    Particularly useful to deal with the dependent 
+    inductive structure of eval_lvalue' *)
 Ltac destruct_eval_expr:=
   repeat (match goal with
          | [ H: eval_expr _ _ _ _ |- _ ] =>
@@ -446,6 +441,7 @@ Proof.
 Qed.
 
 
+(* Tactic: turns eval_gexpr' into eval_gexpr *)
 Ltac fold_eval_gexpr:=
   match goal with
     | [  |- context[eval_gexpr' ?e ?h ?ghe ?ex ?v] ] =>
@@ -460,7 +456,11 @@ Ltac fold_eval_gexpr:=
     | [ H: context[eval_glvalue' ?e ?h ?ghe ?ex ?adr]  |-  _ ] =>
       progress replace (eval_glvalue' e h ghe ex adr) with (eval_glvalue ex e h ghe adr) in H
                                                         by reflexivity
-    end.
+  end.
+
+(** Tactic: Easy case analysis over eval_gexpr. 
+    Particularly useful to deal with the dependent 
+    inductive structure of eval_glvalue' *)
 Ltac destruct_eval_gexpr:=
   repeat (match goal with
          | [ H: eval_gexpr _ _ _ _ _ |- _ ] =>
@@ -588,7 +588,10 @@ Proof.
   intros adr0 h v v' H0 H3.
   invert H0; invert H3. rewrite H1 in H; invert H. auto.
 Qed.
- 
+
+
+(** Show that the predicated are injective.
+    In other words, it behaves like a function. *)
 Lemma eval_expr_functional:
   forall ex e h v v',
     eval_expr ex e h v ->
@@ -654,21 +657,6 @@ Qed.
 
 
 (** *Typing*)
-
-  (*The semantics of assertions is evaluated with respect to an environment*)
-  (*Every definition is proved to be invariant under env. equivalence (Proper)*)
-
-(*
-nt n1, Vint n2 =>
-    eval_int_binop op n1 n2
-  | Vptr p, Vint n =>
-    option_map Vptr
-    (eval_ptr_int_binop ty op p n)
-  | Vptr p1, Vptr p2 =>
-    option_map (fun x => Vint (bool2int x))
-    (eval_ptr_ptr_binop h op p1 p2)
-  | _, _ => None 
-*)
 
 
 Inductive binop_type: binary_operation -> type -> type -> type -> Prop:=
@@ -790,6 +778,97 @@ Proof.
       * symmetry; eapply expr_type_wt2_dec; eauto.
 Qed.
 
+
+(* Eventually this should be 
+   "convertible" types      *)
+Lemma val_type_functional:
+forall h ty1 v ty2,
+  val_type h v ty1 ->
+  val_type h v ty2 ->
+  ty1 = ty2.
+Proof.
+  intros ? ?.
+  induction ty1; intros; destruct v; try solve[inversion H].
+  - destruct ty2; inversion H0; auto.
+  - destruct ty2; try solve[inversion H0]; auto.
+    f_equal.
+    assert ((exists v, h p = Some v) \/  ty1 = ty2).
+    {
+      destruct ty1; simpl in H; destruct (h p) as [v|] eqn:HP; try solve[inversion H];
+        try (left ; exists v; auto).
+      destruct ty2; simpl in H0; rewrite HP in H0; try solve[inversion H0];
+        try (right;auto).
+    }
+    destruct H1 as [[v HP]| ?]; auto.
+    eapply (IHty1 v); eauto.
+    + simpl in H. destruct ty1; rewrite HP in H; auto.
+    + simpl in H0. destruct ty2; rewrite HP in H0; auto.
+Qed.
+
+
+
+
+Global Instance Proper_expr_type_expr: Proper (Logic.eq ==> env_equiv ==> Logic.eq ==>Logic.eq ==> Logic.iff) expr_type.
+Proof.
+  intros ? ? ? ? ? ? ? ? ? ? ? ?; subst.
+  repeat match goal with
+  | [ e: env |- _ ] => revert e 
+  | [ t: type |- _ ] => revert t
+  | [ h: heap |- _ ] => revert h
+  end.
+  induction y; try (simpl; intros; try rewrite H0; first[ reflexivity| f_equiv; apply IHy]).
+  (*binopo*)
+  - intros; split; intros (? & ? &? & ? & ? & ?); subst; simpl.
+    + do 2 eexists; repeat split; eauto.
+      eapply IHy1; eauto.
+      eapply IHy2; eauto.
+    + do 2 eexists; repeat split; eauto.
+      eapply IHy1; eauto.
+      eapply IHy2; eauto.
+Qed.
+
+Fixpoint gval_type (gv:gval)(gty:gtype):Prop:=
+  match gv, gty with
+  | GVnat _, GTnat | GVbool _, GTbool | GVheap _, GTheap => True 
+  | _, _ => False
+  end.
+
+
+
+Definition uval_type (rh:heap)(uv:uval)(uty:utype):Prop:=
+  match uty, uv with
+    | RT ty, RV v => val_type rh v ty
+    | GT ty, GV v => gval_type v ty
+    | _, _ => False
+  end.
+
+Fixpoint gexpr_type (gex:gexpr)(e:env)(rh:heap)(ghe:genv)(ty:utype): Prop:=
+  match ty, gex with
+  | RT ty', Rexpr ex' => expr_type ex' e rh ty'
+  | RT ty', GEconst_ptr p _ => val_type rh (Vptr p) ty'
+  | GT ty', GEconst_nat n _ => gval_type (GVnat n) ty'
+  | GT ty', GEconst_bool b _ => gval_type (GVbool b) ty'
+  | _ , GEtempvar x _ => exists v, find ghe x = Some v /\
+                               uval_type rh v ty
+  | RT ty', GEderef ex' _ =>  gexpr_type ex' e rh ghe (GT (GTpointer ty'))
+  | _, _ => False
+  end.
+
+Global Instance Proper_gexpr_type: forall gex, Proper (env_equiv ==> Logic.eq ==> env_equiv_gexpr gex ==> Logic.eq ==> Logic.iff) (gexpr_type gex).
+Proof.
+  induction gex;
+    intros ? ? ? ? ? ? ? ? ? ? ? ?; subst;
+    destruct y2;
+    simpl; try rewrite H; repeat rewrite H1; try reflexivity; simpl.
+  apply singleton_spec; reflexivity.
+  apply singleton_spec; reflexivity.
+Qed.
+
+
+(** The lemmas bellow represent the properties of well-typedness. 
+    The development currently doesn't need it.
+    To make them work, they need a spec of well typed heaps. *)
+
 (*
 Lemma eval_expr_type:
   forall (ex : expr) (e : renv) (h : heap) ty v,
@@ -821,33 +900,6 @@ Proof.
     admit.
 Admitted.
  *)
-
-(* Eventually this should be 
-   "convertible" types      *)
-Lemma val_type_functional:
-forall h ty1 v ty2,
-  val_type h v ty1 ->
-  val_type h v ty2 ->
-  ty1 = ty2.
-Proof.
-  intros ? ?.
-  induction ty1; intros; destruct v; try solve[inversion H].
-  - destruct ty2; inversion H0; auto.
-  - destruct ty2; try solve[inversion H0]; auto.
-    f_equal.
-    assert ((exists v, h p = Some v) \/  ty1 = ty2).
-    {
-      destruct ty1; simpl in H; destruct (h p) as [v|] eqn:HP; try solve[inversion H];
-        try (left ; exists v; auto).
-      destruct ty2; simpl in H0; rewrite HP in H0; try solve[inversion H0];
-        try (right;auto).
-    }
-    destruct H1 as [[v HP]| ?]; auto.
-    eapply (IHty1 v); eauto.
-    + simpl in H. destruct ty1; rewrite HP in H; auto.
-    + simpl in H0. destruct ty2; rewrite HP in H0; auto.
-Qed.
-
    (*
 Lemma eval_expr_type2:
   forall (ex : expr) (e : renv) (h : heap) ty v,
@@ -987,59 +1039,3 @@ Admitted.
     admit.
 Admitted.
 *)
-
-Global Instance Proper_expr_type_expr: Proper (Logic.eq ==> env_equiv ==> Logic.eq ==>Logic.eq ==> Logic.iff) expr_type.
-Proof.
-  intros ? ? ? ? ? ? ? ? ? ? ? ?; subst.
-  repeat match goal with
-  | [ e: env |- _ ] => revert e 
-  | [ t: type |- _ ] => revert t
-  | [ h: heap |- _ ] => revert h
-  end.
-  induction y; try (simpl; intros; try rewrite H0; first[ reflexivity| f_equiv; apply IHy]).
-  (*binopo*)
-  - intros; split; intros (? & ? &? & ? & ? & ?); subst; simpl.
-    + do 2 eexists; repeat split; eauto.
-      eapply IHy1; eauto.
-      eapply IHy2; eauto.
-    + do 2 eexists; repeat split; eauto.
-      eapply IHy1; eauto.
-      eapply IHy2; eauto.
-Qed.
-
-Fixpoint gval_type (gv:gval)(gty:gtype):Prop:=
-  match gv, gty with
-  | GVnat _, GTnat | GVbool _, GTbool | GVheap _, GTheap => True 
-  | _, _ => False
-  end.
-
-
-
-Definition uval_type (rh:heap)(uv:uval)(uty:utype):Prop:=
-  match uty, uv with
-    | RT ty, RV v => val_type rh v ty
-    | GT ty, GV v => gval_type v ty
-    | _, _ => False
-  end.
-
-Fixpoint gexpr_type (gex:gexpr)(e:env)(rh:heap)(ghe:genv)(ty:utype): Prop:=
-  match ty, gex with
-  | RT ty', Rexpr ex' => expr_type ex' e rh ty'
-  | RT ty', GEconst_ptr p _ => val_type rh (Vptr p) ty'
-  | GT ty', GEconst_nat n _ => gval_type (GVnat n) ty'
-  | GT ty', GEconst_bool b _ => gval_type (GVbool b) ty'
-  | _ , GEtempvar x _ => exists v, find ghe x = Some v /\
-                               uval_type rh v ty
-  | RT ty', GEderef ex' _ =>  gexpr_type ex' e rh ghe (GT (GTpointer ty'))
-  | _, _ => False
-  end.
-
-Global Instance Proper_gexpr_type: forall gex, Proper (env_equiv ==> Logic.eq ==> env_equiv_gexpr gex ==> Logic.eq ==> Logic.iff) (gexpr_type gex).
-Proof.
-  induction gex;
-    intros ? ? ? ? ? ? ? ? ? ? ? ?; subst;
-    destruct y2;
-    simpl; try rewrite H; repeat rewrite H1; try reflexivity; simpl.
-  apply singleton_spec; reflexivity.
-  apply singleton_spec; reflexivity.
-Qed.

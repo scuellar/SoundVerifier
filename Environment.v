@@ -1,4 +1,3 @@
-
 Require Import Coq.Classes.Morphisms.
 Require Import Relation_Definitions.
 Require Import Coq.Classes.RelationClasses.
@@ -18,13 +17,18 @@ Import PMapsFacts.
 Require Import VCC.Tactics.
 Require Import VCC.Basics.
 
-(** * 8) Environment *)
+(** * Environment *)
+(* The environment is a function from variable identifiers to values. *)
+(* It is implemented by a PMap.                                       *)
 Section ParametricInVal.
-  Context {val: Type}.
+  Context {val: Type}. (* The kind of values in the environment *)
+  
 Definition env:Type := PMap.t val.
 Definition find  (e:env) (k:ident) := PMap.find k e.
 Definition env_fun_equiv: relation (positive -> option val) := pointwise_relation _ Logic.eq.
 
+(* Thought he environment has an eficient implementation            
+   all definitions should be invariant up to (pointwise) equivalenc *)
 Global Instance Equivalence_env_fun_equiv: Equivalence env_fun_equiv:= _.
 Definition env_equiv: relation env := (fun x y => env_fun_equiv (find x) (find y)).
 Global Instance Equivalence_env_equiv: Equivalence env_equiv.

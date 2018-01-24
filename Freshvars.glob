@@ -1,4 +1,4 @@
-DIGEST bee4dbe7ddfdad75600de1cd79295df0
+DIGEST c25d0687ae66dc737ce1852467830239
 FVCC.Freshvars
 R35:52 Coq.MSets.MSetPositive <> <> lib
 R89:99 Coq.MSets.MSetPositive PositiveSet <> modtype
@@ -6,16 +6,16 @@ mod 82:85 <> PSet
 R147:167 Coq.Classes.Morphisms <> <> lib
 R186:204 compcert.lib.Coqlib <> <> lib
 R223:233 VCC.Tactics <> <> lib
-def 436:444 <> fresh_var
-R456:461 VCC.Freshvars <> t def
-R465:472 Coq.Numbers.BinNums <> positive ind
-R485:491 Coq.MSets.MSetPositive PositiveSet max_elt def
-R493:500 VCC.Freshvars <> set_vars var
-R512:515 Coq.Init.Datatypes <> Some constr
-R523:524 Coq.PArith.BinPosDef <> :positive_scope:x_'~'_'1' not
-R530:533 Coq.Init.Datatypes <> None constr
-R673:682 Coq.MSets.MSetPositive PositiveSet union_spec thm
-R710:723 Coq.MSets.MSetPositive PositiveSet singleton_spec thm
-R844:853 Coq.MSets.MSetPositive PositiveSet union_spec thm
-R884:908 Coq.Logic.Classical_Prop <> and_not_or thm
-R943:956 Coq.MSets.MSetPositive PositiveSet singleton_spec thm
+def 527:535 <> fresh_var
+R547:552 VCC.Freshvars <> t def
+R556:563 Coq.Numbers.BinNums <> positive ind
+R576:582 Coq.MSets.MSetPositive PositiveSet max_elt def
+R584:591 VCC.Freshvars <> set_vars var
+R603:606 Coq.Init.Datatypes <> Some constr
+R614:615 Coq.PArith.BinPosDef <> :positive_scope:x_'~'_'1' not
+R621:624 Coq.Init.Datatypes <> None constr
+R764:773 Coq.MSets.MSetPositive PositiveSet union_spec thm
+R801:814 Coq.MSets.MSetPositive PositiveSet singleton_spec thm
+R935:944 Coq.MSets.MSetPositive PositiveSet union_spec thm
+R975:999 Coq.Logic.Classical_Prop <> and_not_or thm
+R1034:1047 Coq.MSets.MSetPositive PositiveSet singleton_spec thm

@@ -23,6 +23,7 @@ Proof.
 Qed.
 
 
+
 Definition option_val_type (rh:heap) (ov:option val) (ty:type): Prop:=
   match ov with
   | Some v => val_type rh v ty

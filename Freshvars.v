@@ -7,12 +7,16 @@ Require Import compcert.lib.Coqlib.
 
 Require Import VCC.Tactics.
 
+(** *Fresh Vars*)
+
 
 
 (* Most lemmas and tactics are in Expression.v and Assertionsemantics.v 
    Relating Free_vars/free_vars_expr with fresh_var *)
 (* For example free_vars_spec in AssertionSemantics.v *)
 
+
+(*Computes the a variable outside the set of free variables set_vars*)
 Definition fresh_var (set_vars:PSet.t): positive:=
   match (max_elt set_vars) with
   | Some x => x~1
