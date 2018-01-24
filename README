@@ -24,7 +24,8 @@ Contains the following files:
 - Verifier.v
   Defines a function that computes the obligations requires to
   verify a program.
-
+- VerifierSoundness.v
+  Proves the soundness of the verifier.
 
 EXTERNAL DEPENDENCIES:
 
