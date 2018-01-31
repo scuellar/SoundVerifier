@@ -16,7 +16,7 @@ Require Import VCC.Syntax.
 Require Import VCC.Semantics.
 Require Import VCC.Assertions.
 Require Import VCC.ExpressionVerifier.
-Require Import VCC.Verifier.
+Require Import VCC.VerifierProgram.
 
 Import Expressions.
 

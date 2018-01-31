@@ -126,7 +126,8 @@ Section ParametricInVal.
       intros HH; apply H; inversion HH; auto.
   Qed.
 
-  (* Tactic that does case analysis over address_dec*)
+  (* Tactic that does case analysis over add_dec*)
+  (* Practical for things like 'if add_dec a b' then _ else _*)
   Ltac destruct_add_dec:=
     match goal with
     | [ |- context [add_eq ?a1 ?a2] ] =>

@@ -77,6 +77,7 @@ Infix "/\" := Aand (right associativity, at level 80) : assert_scope.
 Infix "\/" := Aor (right associativity, at level 85) : assert_scope.
 Notation "~ x" := (Anot x) : assert_scope.
 Notation "'Ex'" := Aexists (at level 70) : assert_scope.
+Notation "'GEx'" := Agexists (at level 70) : assert_scope.
 Notation "'Defined'" := Adefined : assert_scope.
 Notation "'UPDATE'" := Aupdate_heap : assert_scope.
 Notation "'Alloc'" := Aalloc : assert_scope.

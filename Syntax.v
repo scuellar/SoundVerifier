@@ -13,7 +13,9 @@ Require Import VCC.Assertions.
 Require Import VCC.Expressions.
 
 
-(** * 5) Statements *)
+(** *Syntax*)
+
+(** * Statements *)
 
 Inductive gstatement: Type :=
 (*Ghost statements*)
@@ -47,7 +49,7 @@ Definition Sfor (inv:assertion)(s1: statement) (e2: expr) (s3: statement) (s4: s
   Sseq s1 (Sloop inv (inv /\ Rexpr expr_zero == Rexpr e2)%assert (Sseq (Sifthenelse e2 Sskip Sbreak) s3) s4).
 
 
-(** * 6) Continuations*)
+(** * Continuations*)
 Inductive cont: Type:=
 | Kstop
 | Kloop1: assertion -> assertion -> statement -> statement -> cont -> cont
@@ -55,7 +57,7 @@ Inductive cont: Type:=
 | Kseq: statement -> cont -> cont
 | GKseq: gstatement -> cont -> cont.
 
-(** * 10) State *)
+(** * State *)
 
 Inductive state : Type :=
 | State : statement ->

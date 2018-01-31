@@ -117,6 +117,7 @@ VFILES:=Tactics.v\
   ExpressionVerifier.v\
   VerifierProgram.v\
   VerifierSoundness.v\
+  Notations.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))
